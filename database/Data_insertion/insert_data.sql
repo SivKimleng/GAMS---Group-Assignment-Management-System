@@ -6,7 +6,7 @@ INSERT INTO users (first_name, last_name, email, password_hash, role) VALUES
 ('Rithy', 'San', 'rithy.san@gams.edu', 'demo_hash_003', 'Student'),
 ('Mina', 'Sok', 'mina.sok@gams.edu', 'demo_hash_004', 'Student');
 
-INSERT INTO groups (group_name, subject, description, group_code, leader_user_id) VALUES
+INSERT INTO groupwork (groupwork_name, subject, description, groupwork_code, leader_user_id) VALUES
 ('Data Science Project', 'AI & Data Mining', 'Team for the AI ethics and data mining final assignment.', 'DSP-2026', 1),
 ('Mobile App Team', 'Cross Platform', 'Team building the mobile UI prototype and authentication review.', 'MAT-2026', 3),
 ('Research Writing', 'Academic English', 'Team preparing the final research draft and literature review.', 'RW-2026', 2);

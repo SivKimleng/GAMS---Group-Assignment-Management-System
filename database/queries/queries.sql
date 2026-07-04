@@ -5,38 +5,38 @@ SELECT
     u.user_id,
     CONCAT(u.first_name, ' ', u.last_name) AS user_name,
     u.email,
-    g.group_name,
+    g.groupwork_name,
     ug.member_role,
     ug.membership_status
 FROM users u
 LEFT JOIN user_groups ug ON u.user_id = ug.user_id
-LEFT JOIN groups g ON ug.group_id = g.group_id
-ORDER BY u.user_id, g.group_name;
+LEFT JOIN groupwork g ON ug.group_id = g.group_id
+ORDER BY u.user_id, g.groupwork_name;
 
 -- 2. Show group leader and group members.
 SELECT
-    g.group_name,
+    g.groupwork_name,
     CONCAT(leader.first_name, ' ', leader.last_name) AS group_leader,
     CONCAT(member.first_name, ' ', member.last_name) AS member_name,
     ug.member_role
-FROM groups g
+FROM groupwork g
 LEFT JOIN users leader ON g.leader_user_id = leader.user_id
 LEFT JOIN user_groups ug ON g.group_id = ug.group_id
 LEFT JOIN users member ON ug.user_id = member.user_id
 WHERE ug.membership_status = 'Active'
-ORDER BY g.group_name, ug.member_role, member_name;
+ORDER BY g.groupwork_name, ug.member_role, member_name;
 
 -- 3. Show all assignments in each group.
 SELECT
-    g.group_name,
+    g.groupwork_name,
     a.assignment_id,
     a.title AS assignment_title,
     a.status,
     a.priority,
     a.due_date
-FROM groups g
+FROM groupwork g
 JOIN assignments a ON g.group_id = a.group_id
-ORDER BY g.group_name, a.due_date;
+ORDER BY g.groupwork_name, a.due_date;
 
 -- 4. Show all tasks under each assignment.
 SELECT
@@ -53,7 +53,7 @@ ORDER BY a.assignment_id, t.due_date;
 -- 5. Show tasks assigned to each user.
 SELECT
     CONCAT(u.first_name, ' ', u.last_name) AS assigned_to,
-    g.group_name,
+    g.groupwork_name,
     a.title AS assignment_title,
     t.title AS task_title,
     t.status,
@@ -61,7 +61,7 @@ SELECT
 FROM users u
 JOIN tasks t ON u.user_id = t.assigned_user_id
 JOIN assignments a ON t.assignment_id = a.assignment_id
-JOIN groups g ON a.group_id = g.group_id
+JOIN groupwork g ON a.group_id = g.group_id
 ORDER BY assigned_to, t.due_date;
 
 -- 6. Show task status and priority.
@@ -93,7 +93,7 @@ ORDER BY t.status, t.due_date;
 SELECT
     a.assignment_id,
     a.title AS assignment_title,
-    g.group_name,
+    g.groupwork_name,
     COUNT(t.task_id) AS total_tasks,
     SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) AS completed_tasks,
     ROUND(
@@ -104,10 +104,10 @@ SELECT
         0
     ) AS progress_percentage
 FROM assignments a
-JOIN groups g ON a.group_id = g.group_id
+JOIN groupwork g ON a.group_id = g.group_id
 LEFT JOIN tasks t ON a.assignment_id = t.assignment_id
-GROUP BY a.assignment_id, a.title, g.group_name
-ORDER BY g.group_name, a.title;
+GROUP BY a.assignment_id, a.title, g.groupwork_name
+ORDER BY g.groupwork_name, a.title;
 
 -- 9. Show upcoming reminders.
 SELECT
@@ -133,12 +133,26 @@ SELECT
     t.priority,
     t.due_date,
     a.title AS assignment_title,
-    g.group_name,
+    g.groupwork_name,
     CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
 FROM tasks t
 JOIN assignments a ON t.assignment_id = a.assignment_id
-JOIN groups g ON a.group_id = g.group_id
+JOIN groupwork g ON a.group_id = g.group_id
 LEFT JOIN users u ON t.assigned_user_id = u.user_id
 WHERE t.due_date < CURDATE()
   AND t.status <> 'Completed'
 ORDER BY t.due_date;
+
+
+
+-- Testing Queries (Not Used for Presentation)
+select * from tasks;
+SELECT assignment_id, title, group_id FROM assignments ORDER BY assignment_id;
+
+delete from assignments;
+ALTER TABLE assignments AUTO_INCREMENT = 1;
+
+delete from tasks;
+ALTER TABLE tasks AUTO_INCREMENT = 1;
+
+SELECT task_id, title, assignment_id FROM tasks ORDER BY task_id;

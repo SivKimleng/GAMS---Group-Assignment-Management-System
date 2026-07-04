@@ -124,9 +124,10 @@ CREATE TABLE reminders (
     user_id INT NOT NULL,
     task_id INT NULL,
     assignment_id INT NULL,
-    reminder_message VARCHAR(255) NOT NULL,
+    reminder_type ENUM('Deadline', 'Follow Up', 'Task Update', 'Meeting') NOT NULL DEFAULT 'Deadline',
+    message VARCHAR(255) NOT NULL,
     reminder_date DATETIME NOT NULL,
-    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    status ENUM('Pending', 'Sent', 'Read', 'Dismissed') NOT NULL DEFAULT 'Pending',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_reminders_user
