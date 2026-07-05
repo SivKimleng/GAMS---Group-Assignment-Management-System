@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
-import mysql from 'mysql2/promise';
+import { Sequelize } from 'sequelize';
 
 const sslEnabled = process.env.DB_SSL === 'true';
 const caPath = process.env.DB_SSL_CA_PATH;
@@ -9,20 +9,28 @@ const caPath = process.env.DB_SSL_CA_PATH;
 const sslConfig = sslEnabled
   ? {
       rejectUnauthorized: true,
-      ...(caPath ? { ca: fs.readFileSync(path.resolve(caPath), 'utf8') } : {})
+      ...(caPath
+        ? { ca: fs.readFileSync(path.resolve(caPath), 'utf8') }
+        : {})
     }
-  : undefined;
+  : false;
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: Number.parseInt(process.env.DB_PORT, 10) || 3306,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  ssl: sslConfig
-});
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT) || 3306,
+    dialect: 'mysql',
+    logging: false,
 
-export default pool;
+    dialectOptions: sslEnabled
+      ? {
+          ssl: sslConfig,
+        }
+      : {},
+  }
+);
+
+export default sequelize;
