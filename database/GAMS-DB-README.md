@@ -5,7 +5,7 @@ This folder contains the MySQL database files for **GAMS - Group Assignment Mana
 ## Main Tables
 
 - `users`: stores student account information such as name, email, password hash, and role.
-- `groups`: stores assignment groups, subjects, group codes, and the group leader.
+- `groupwork`: stores assignment groups, subjects, group codes, and the group leader.
 - `user_groups`: connects users to groups and stores each member role.
 - `assignments`: stores group assignments, due dates, status, and priority.
 - `tasks`: stores tasks under assignments, assigned users, status, priority, and due dates.
@@ -14,9 +14,9 @@ This folder contains the MySQL database files for **GAMS - Group Assignment Mana
 
 ## Relationships
 
-- One user can belong to many groups.
-- One group can have many users through `user_groups`.
-- One group has one leader through `groups.leader_user_id`.
+- One user can belong to many groupworks.
+- One groupwork can have many users through `user_groups`.
+- One groupwork has one leader through `groupwork.leader_user_id`.
 - One group can have many assignments.
 - One assignment can have many tasks.
 - One task can be assigned to one user.
@@ -30,19 +30,19 @@ Child records such as group members, assignments, tasks, progress records, and r
 Run the files in this order from MySQL:
 
 ```sql
-SOURCE database/schema.sql;
-SOURCE database/insert_data.sql;
+SOURCE database/schemas/schema.sql;
+SOURCE database/Data_insertion/insert_data.sql;
 SOURCE database/indexes.sql;
-SOURCE database/queries.sql;
+SOURCE database/queries/queries.sql;
 ```
 
 If you are already inside the `database` folder, run:
 
 ```sql
-SOURCE schema.sql;
-SOURCE insert_data.sql;
+SOURCE schemas/schema.sql;
+SOURCE Data_insertion/insert_data.sql;
 SOURCE indexes.sql;
-SOURCE queries.sql;
+SOURCE queries/queries.sql;
 ```
 
 ## Example Queries
@@ -62,7 +62,7 @@ The `queries.sql` file includes test queries for:
 
 ## Frontend Support
 
-The current frontend uses mock data for:
+The current frontend can call the backend at `http://localhost:5000/api`. Some screens still use mock data, but the database supports:
 
 - Groups with members, subject, and progress.
 - Assignments with status, priority, and progress.
@@ -70,7 +70,7 @@ The current frontend uses mock data for:
 - Deadlines and reminders.
 - Leader/member views.
 
-This database supports those same data needs through the `groups`, `user_groups`, `assignments`, `tasks`, `progress`, and `reminders` tables.
+This database supports those same data needs through the `groupwork`, `user_groups`, `assignments`, `tasks`, `progress`, and `reminders` tables.
 
 ## Presentation Explanation
 

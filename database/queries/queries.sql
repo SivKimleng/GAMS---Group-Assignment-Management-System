@@ -113,15 +113,14 @@ ORDER BY g.groupwork_name, a.title;
 SELECT
     r.reminder_id,
     r.reminder_date,
-    r.reminder_type,
     r.message,
-    r.status,
+    r.is_sent,
     t.title AS task_title,
-    CONCAT(u.first_name, ' ', u.last_name) AS reminder_for
+    CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
 FROM reminders r
 JOIN tasks t ON r.task_id = t.task_id
-LEFT JOIN users u ON r.user_id = u.user_id
-WHERE r.status = 'Pending'
+LEFT JOIN users u ON t.assigned_user_id = u.user_id
+WHERE r.is_sent = FALSE
   AND r.reminder_date >= NOW()
 ORDER BY r.reminder_date;
 
@@ -142,17 +141,3 @@ LEFT JOIN users u ON t.assigned_user_id = u.user_id
 WHERE t.due_date < CURDATE()
   AND t.status <> 'Completed'
 ORDER BY t.due_date;
-
-
-
--- Testing Queries (Not Used for Presentation)
-select * from tasks;
-SELECT assignment_id, title, group_id FROM assignments ORDER BY assignment_id;
-
-delete from assignments;
-ALTER TABLE assignments AUTO_INCREMENT = 1;
-
-delete from tasks;
-ALTER TABLE tasks AUTO_INCREMENT = 1;
-
-SELECT task_id, title, assignment_id FROM tasks ORDER BY task_id;
