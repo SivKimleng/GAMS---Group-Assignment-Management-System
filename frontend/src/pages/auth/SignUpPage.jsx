@@ -4,7 +4,7 @@ import AuthLayout from '../../components/layouts/AuthLayout.jsx';
 import Button from '../../components/ui/Button.jsx';
 import InputField from '../../components/ui/InputField.jsx';
 import Logo from '../../components/ui/Logo.jsx';
-import { saveMockSession } from '../../utils/mockAuth.js';
+import { getApiErrorMessage, registerUser, saveAuthSession } from '../../services/api.js';
 
 const initialValues = {
   fullName: '',
@@ -16,6 +16,8 @@ const initialValues = {
 function SignUpPage() {
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   function validate() {
@@ -32,19 +34,34 @@ function SignUpPage() {
     return nextErrors;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
+    setMessage('');
 
     if (Object.keys(nextErrors).length === 0) {
-      const trimmedName = values.fullName.trim();
-      saveMockSession({
-        firstName: trimmedName.split(' ')[0] || 'Demo',
-        fullName: trimmedName,
-        email: values.email.trim()
-      });
-      navigate('/dashboard');
+      const nameParts = values.fullName.trim().split(/\s+/);
+      const firstName = nameParts.shift() || values.fullName.trim();
+      const lastName = nameParts.join(' ') || 'Student';
+
+      setIsSubmitting(true);
+
+      try {
+        const result = await registerUser({
+          first_name: firstName,
+          last_name: lastName,
+          email: values.email.trim(),
+          password: values.password,
+          role: 'Student'
+        });
+        saveAuthSession(result.data, true);
+        navigate('/dashboard');
+      } catch (error) {
+        setMessage(getApiErrorMessage(error, 'Registration failed. Please try again.'));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -108,8 +125,14 @@ function SignUpPage() {
           />
         </div>
 
+        {message && (
+          <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+            {message}
+          </p>
+        )}
+
         <Button type="submit" className="mt-6 w-full">
-          Sign Up
+          {isSubmitting ? 'Creating account...' : 'Sign Up'}
         </Button>
 
         <p className="mt-6 text-center text-sm text-slate-600">

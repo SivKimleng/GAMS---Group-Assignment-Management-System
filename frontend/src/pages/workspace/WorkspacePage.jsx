@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardPanel from '../../components/dashboard/DashboardPanel.jsx';
 import MobileDashboardNav from '../../components/layouts/MobileDashboardNav.jsx';
@@ -11,14 +11,28 @@ import {
   workspaceResources,
   workspaceSummary
 } from '../../data/mockData.js';
+import { getApiErrorMessage, getAssignments } from '../../services/api.js';
 import { clearMockSession, getMockSession } from '../../utils/mockAuth.js';
 
 const statusStyles = {
   'In Progress': 'bg-blue-100 text-blue-700',
   Review: 'bg-purple-100 text-purple-700',
   Pending: 'bg-amber-100 text-amber-700',
+  'Not Started': 'bg-amber-100 text-amber-700',
   Completed: 'bg-emerald-100 text-emerald-700'
 };
+
+function mapAssignment(assignment) {
+  return {
+    id: assignment.assignment_id,
+    title: assignment.assignment_name,
+    group: assignment.groupwork_name || 'Groupwork',
+    owner: assignment.created_by_user_id ? `User #${assignment.created_by_user_id}` : 'Team',
+    status: assignment.status,
+    priority: assignment.priority,
+    progress: assignment.status === 'Completed' ? 100 : 0
+  };
+}
 
 function WorkspacePage() {
   const navigate = useNavigate();
@@ -28,6 +42,35 @@ function WorkspacePage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [query, setQuery] = useState('');
   const [activityLog, setActivityLog] = useState(['Workspace opened with current mock assignments.']);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadAssignments() {
+      if (!localStorage.getItem('token') && !sessionStorage.getItem('token')) {
+        return;
+      }
+
+      try {
+        const response = await getAssignments();
+
+        if (!isActive) return;
+
+        setAssignments(response.data.map(mapAssignment));
+        setActivityLog(['Assignments loaded from backend.']);
+      } catch (error) {
+        if (isActive) {
+          setActivityLog([getApiErrorMessage(error, 'Could not load backend assignments. Showing demo data.')]);
+        }
+      }
+    }
+
+    loadAssignments();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const visibleAssignments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -41,9 +84,9 @@ function WorkspacePage() {
   }, [assignments, query, statusFilter]);
 
   const completedCount = assignments.filter((assignment) => assignment.status === 'Completed').length;
-  const averageProgress = Math.round(
-    assignments.reduce((total, assignment) => total + assignment.progress, 0) / assignments.length
-  );
+  const averageProgress = assignments.length
+    ? Math.round(assignments.reduce((total, assignment) => total + assignment.progress, 0) / assignments.length)
+    : 0;
 
   function handleCompleteAssignment(title) {
     setAssignments((currentAssignments) =>
@@ -170,7 +213,7 @@ function WorkspacePage() {
                   <div className="h-full rounded-full bg-[#073ca6]" style={{ width: `${averageProgress}%` }} />
                 </div>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-                  Overall progress is calculated from the active mock assignments shown in this workspace.
+                  Overall progress is calculated from the active assignments shown in this workspace.
                 </p>
               </DashboardPanel>
 

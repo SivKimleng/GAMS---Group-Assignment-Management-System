@@ -1,15 +1,15 @@
 import React from 'react';
 import AppRoutes from './routes/AppRoutes.jsx';
-import { getUsers } from './services/api.js';
+import { getHealth } from './services/api.js';
 
 function App() {
   React.useEffect(() => {
-    getUsers()
-      .then((users) => {
-        console.log('Backend /api/users connection test:', users);
+    getHealth()
+      .then((health) => {
+        console.log('Backend /api/health connection test:', health);
       })
       .catch((error) => {
-        console.error('Backend /api/users connection test failed:', error);
+        console.error('Backend /api/health connection test failed:', error);
       });
   }, []);
 

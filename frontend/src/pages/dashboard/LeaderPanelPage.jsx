@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardPanel from '../../components/dashboard/DashboardPanel.jsx';
 import ProgressCard from '../../components/dashboard/ProgressCard.jsx';
@@ -6,9 +6,21 @@ import MobileDashboardNav from '../../components/layouts/MobileDashboardNav.jsx'
 import Sidebar from '../../components/layouts/Sidebar.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { currentUser, leaderMembers, leaderTasks } from '../../data/mockData.js';
+import { createTask, getApiErrorMessage, getTasks, updateTaskStatus } from '../../services/api.js';
 import { clearMockSession, getMockSession } from '../../utils/mockAuth.js';
 
 const priorities = ['High', 'Medium', 'Low'];
+
+function mapLeaderTask(task) {
+  return {
+    id: task.task_id,
+    assignmentId: task.assignment_id,
+    title: task.task_name,
+    assignee: task.assigned_user_id ? `User #${task.assigned_user_id}` : 'Unassigned',
+    priority: task.priority,
+    status: task.status
+  };
+}
 
 function LeaderPanelPage() {
   const navigate = useNavigate();
@@ -20,6 +32,35 @@ function LeaderPanelPage() {
     assignee: leaderMembers[1].name,
     priority: 'Medium'
   });
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadTasks() {
+      if (!localStorage.getItem('token') && !sessionStorage.getItem('token')) {
+        return;
+      }
+
+      try {
+        const response = await getTasks();
+
+        if (!isActive) return;
+
+        setTasks(response.data.map(mapLeaderTask));
+      } catch (error) {
+        if (isActive) {
+          setNotice(getApiErrorMessage(error, 'Could not load backend tasks. Showing demo data.'));
+        }
+      }
+    }
+
+    loadTasks();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const completedTasks = tasks.filter((task) => task.status === 'Completed').length;
   const progress = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
@@ -35,10 +76,32 @@ function LeaderPanelPage() {
     [tasks]
   );
 
-  function handleAddTask(event) {
+  async function handleAddTask(event) {
     event.preventDefault();
     const title = draftTask.title.trim();
     if (!title) return;
+
+    const assignmentId = tasks.find((task) => task.assignmentId)?.assignmentId;
+
+    if (assignmentId) {
+      try {
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 7);
+        const response = await createTask({
+          assignment_id: assignmentId,
+          task_name: title,
+          priority: draftTask.priority,
+          status: 'Pending',
+          due_date: dueDate.toISOString().slice(0, 10)
+        });
+        setTasks([mapLeaderTask(response.data), ...tasks]);
+        setDraftTask({ title: '', assignee: draftTask.assignee, priority: 'Medium' });
+        return;
+      } catch (error) {
+        setNotice(getApiErrorMessage(error, 'Could not create task.'));
+        return;
+      }
+    }
 
     setTasks([
       {
@@ -52,11 +115,27 @@ function LeaderPanelPage() {
     setDraftTask({ title: '', assignee: draftTask.assignee, priority: 'Medium' });
   }
 
-  function handleCompleteTask(title) {
+  async function handleCompleteTask(taskToUpdate) {
+    const nextStatus = taskToUpdate.status === 'Completed' ? 'In Progress' : 'Completed';
+
+    if (taskToUpdate.id) {
+      try {
+        const response = await updateTaskStatus(taskToUpdate.id, nextStatus);
+        const updatedTask = mapLeaderTask(response.data);
+        setTasks((currentTasks) =>
+          currentTasks.map((task) => (task.id === taskToUpdate.id ? updatedTask : task))
+        );
+        return;
+      } catch (error) {
+        setNotice(getApiErrorMessage(error, 'Could not update task status.'));
+        return;
+      }
+    }
+
     setTasks((currentTasks) =>
       currentTasks.map((task) =>
-        task.title === title
-          ? { ...task, status: task.status === 'Completed' ? 'In Progress' : 'Completed' }
+        task.title === taskToUpdate.title
+          ? { ...task, status: nextStatus }
           : task
       )
     );
@@ -101,6 +180,15 @@ function LeaderPanelPage() {
               />
             </DashboardPanel>
           </section>
+
+          {notice && (
+            <div className="mt-6 flex items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
+              <span>{notice}</span>
+              <button type="button" className="font-black text-teal-900" onClick={() => setNotice('')}>
+                Dismiss
+              </button>
+            </div>
+          )}
 
           <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
             <DashboardPanel title="Assign New Task">
@@ -191,14 +279,14 @@ function LeaderPanelPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCompleteTask(task.title)}
+                      onClick={() => handleCompleteTask(task)}
                       className={`w-fit rounded-md px-2 py-1 text-xs font-black ${
                         task.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
                       }`}
                     >
                       {task.status}
                     </button>
-                    <span className="text-sm font-bold text-slate-500">Mock</span>
+                    <span className="text-sm font-bold text-slate-500">{task.id ? 'API' : 'Mock'}</span>
                   </div>
                 ))}
               </div>

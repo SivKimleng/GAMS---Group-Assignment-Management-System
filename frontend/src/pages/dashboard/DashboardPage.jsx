@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardPanel from '../../components/dashboard/DashboardPanel.jsx';
 import ProgressCard from '../../components/dashboard/ProgressCard.jsx';
@@ -15,6 +15,7 @@ import {
   progressOverview,
   tasks as initialTasks
 } from '../../data/mockData.js';
+import { createGroupwork, getApiErrorMessage, getGroupworks, getTasks, updateTaskStatus } from '../../services/api.js';
 import { clearMockSession, getMockSession } from '../../utils/mockAuth.js';
 
 const statusClasses = {
@@ -22,6 +23,32 @@ const statusClasses = {
   Pending: 'bg-amber-100 text-amber-700',
   'In Progress': 'bg-blue-100 text-blue-700'
 };
+
+function formatDueDate(date) {
+  if (!date) return 'No date';
+  return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function mapGroupwork(groupwork) {
+  return {
+    id: groupwork.groupwork_id,
+    name: groupwork.groupwork_name,
+    members: groupwork.member_count || 1,
+    subject: groupwork.subject,
+    progress: 0
+  };
+}
+
+function mapTask(task) {
+  return {
+    id: task.task_id,
+    title: task.task_name,
+    group: task.groupwork_name || task.assignment_name || 'Assignment',
+    status: task.status,
+    due: formatDueDate(task.due_date),
+    dueOrder: task.due_date ? new Date(task.due_date).getTime() : Number.MAX_SAFE_INTEGER
+  };
+}
 
 function DashboardPage() {
   const navigate = useNavigate();
@@ -33,6 +60,35 @@ function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortTasksByDueDate, setSortTasksByDueDate] = useState(false);
   const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadDashboardData() {
+      if (!localStorage.getItem('token') && !sessionStorage.getItem('token')) {
+        return;
+      }
+
+      try {
+        const [groupworkResponse, taskResponse] = await Promise.all([getGroupworks(), getTasks()]);
+
+        if (!isActive) return;
+
+        setGroups(groupworkResponse.data.map(mapGroupwork));
+        setTasks(taskResponse.data.map(mapTask));
+      } catch (error) {
+        if (isActive) {
+          setNotice(getApiErrorMessage(error, 'Could not load backend dashboard data. Showing demo data.'));
+        }
+      }
+    }
+
+    loadDashboardData();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -61,26 +117,47 @@ function DashboardPage() {
 
   const stats = buildDashboardStats(groups, tasks, deadlines);
 
-  function handleCreateGroup() {
+  async function handleCreateGroup() {
     const nextNumber = groups.length + 1;
-    const newGroup = {
-      name: `Demo Group ${nextNumber}`,
-      members: 1,
-      subject: 'New Assignment',
-      progress: 0
-    };
+    const groupName = `Demo Group ${nextNumber}`;
 
-    setGroups([newGroup, ...groups]);
-    setNotice(`${newGroup.name} added to My Groups.`);
+    try {
+      const response = await createGroupwork({
+        groupwork_name: groupName,
+        subject: 'New Assignment',
+        description: 'Created from the GAMS dashboard.'
+      });
+      const newGroup = mapGroupwork(response.data);
+      setGroups([newGroup, ...groups]);
+      setNotice(`${newGroup.name} added to My Groups.`);
+    } catch (error) {
+      setNotice(getApiErrorMessage(error, 'Could not create groupwork.'));
+    }
   }
 
-  function handleToggleTaskStatus(title) {
+  async function handleToggleTaskStatus(taskToUpdate) {
+    const nextStatus = taskToUpdate.status === 'Completed' ? 'In Progress' : 'Completed';
+
+    if (taskToUpdate.id) {
+      try {
+        const response = await updateTaskStatus(taskToUpdate.id, nextStatus);
+        const updatedTask = mapTask(response.data);
+        setTasks((currentTasks) =>
+          currentTasks.map((task) => (task.id === taskToUpdate.id ? updatedTask : task))
+        );
+        return;
+      } catch (error) {
+        setNotice(getApiErrorMessage(error, 'Could not update task status.'));
+        return;
+      }
+    }
+
     setTasks((currentTasks) =>
       currentTasks.map((task) => {
-        if (task.title !== title) return task;
+        if (task.title !== taskToUpdate.title) return task;
         return {
           ...task,
-          status: task.status === 'Completed' ? 'In Progress' : 'Completed'
+          status: nextStatus
         };
       })
     );
@@ -198,7 +275,7 @@ function DashboardPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleToggleTaskStatus(task.title)}
+                        onClick={() => handleToggleTaskStatus(task)}
                         className={`w-fit rounded-md px-2 py-1 text-xs font-black ${statusClasses[task.status]}`}
                       >
                         {task.status}

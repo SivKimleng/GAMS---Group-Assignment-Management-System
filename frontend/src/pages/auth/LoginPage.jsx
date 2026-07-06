@@ -4,7 +4,7 @@ import AuthLayout from '../../components/layouts/AuthLayout.jsx';
 import Button from '../../components/ui/Button.jsx';
 import InputField from '../../components/ui/InputField.jsx';
 import Logo from '../../components/ui/Logo.jsx';
-import { saveMockSession, userFromEmail } from '../../utils/mockAuth.js';
+import { getApiErrorMessage, loginUser, saveAuthSession } from '../../services/api.js';
 
 const initialValues = {
   email: '',
@@ -16,6 +16,7 @@ function LoginPage() {
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   function validate() {
@@ -27,15 +28,27 @@ function LoginPage() {
     return nextErrors;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
     setMessage('');
 
     if (Object.keys(nextErrors).length === 0) {
-      saveMockSession(userFromEmail(values.email.trim()), values.remember);
-      navigate('/dashboard');
+      setIsSubmitting(true);
+
+      try {
+        const result = await loginUser({
+          email: values.email.trim(),
+          password: values.password
+        });
+        saveAuthSession(result.data, values.remember);
+        navigate('/dashboard');
+      } catch (error) {
+        setMessage(getApiErrorMessage(error, 'Login failed. Please check your email and password.'));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -125,7 +138,7 @@ function LoginPage() {
         )}
 
         <Button type="submit" className="mt-6 w-full">
-          Login
+          {isSubmitting ? 'Logging in...' : 'Login'}
         </Button>
 
         <p className="mt-6 text-center text-sm text-slate-600">
