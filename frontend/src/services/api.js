@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
 });
 
 api.interceptors.request.use((config) => {
@@ -88,8 +88,18 @@ export async function getGroupworks() {
   return response.data;
 }
 
+export async function getGroupworkMembers(groupworkId) {
+  const response = await api.get(`/groupworks/${groupworkId}/members`);
+  return response.data;
+}
+
 export async function createGroupwork(payload) {
   const response = await api.post('/groupworks', payload);
+  return response.data;
+}
+
+export async function joinGroupworkByCode(groupworkCode) {
+  const response = await api.post('/groupworks/0/join', { groupwork_code: groupworkCode });
   return response.data;
 }
 
@@ -100,6 +110,16 @@ export async function getAssignments() {
 
 export async function createAssignment(payload) {
   const response = await api.post('/assignments', payload);
+  return response.data;
+}
+
+export async function updateAssignment(assignmentId, payload) {
+  const response = await api.put(`/assignments/${assignmentId}`, payload);
+  return response.data;
+}
+
+export async function getAssignmentProgress(assignmentId) {
+  const response = await api.get(`/assignments/${assignmentId}/progress`);
   return response.data;
 }
 
@@ -115,6 +135,21 @@ export async function createTask(payload) {
 
 export async function updateTaskStatus(taskId, status) {
   const response = await api.patch(`/tasks/${taskId}/status`, { status });
+  return response.data;
+}
+
+export async function getReminders() {
+  const response = await api.get('/reminders');
+  return response.data;
+}
+
+export async function createReminder(payload) {
+  const response = await api.post('/reminders', payload);
+  return response.data;
+}
+
+export async function markReminderRead(reminderId) {
+  const response = await api.patch(`/reminders/${reminderId}/read`);
   return response.data;
 }
 

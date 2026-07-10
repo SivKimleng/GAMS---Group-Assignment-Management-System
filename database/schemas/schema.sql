@@ -1,5 +1,4 @@
-DROP DATABASE IF EXISTS GAMS;
-CREATE DATABASE GAMS;
+CREATE DATABASE IF NOT EXISTS GAMS;
 USE GAMS;
 
 CREATE TABLE users (
@@ -59,7 +58,7 @@ CREATE TABLE assignments (
     title VARCHAR(150) NOT NULL,
     description TEXT,
     due_date DATE NOT NULL,
-    status ENUM('Not Started', 'In Progress', 'Completed') NOT NULL DEFAULT 'Not Started',
+    status ENUM('Pending', 'In Progress', 'Review', 'Completed') NOT NULL DEFAULT 'Pending',
     priority ENUM('Low', 'Medium', 'High') NOT NULL DEFAULT 'Medium',
     created_by_user_id INT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -84,7 +83,7 @@ CREATE TABLE tasks (
     assigned_user_id INT NULL,
     title VARCHAR(150) NOT NULL,
     description TEXT,
-    status ENUM('Pending', 'In Progress', 'Completed') NOT NULL DEFAULT 'Pending',
+    status ENUM('Pending', 'In Progress', 'Review', 'Completed') NOT NULL DEFAULT 'Pending',
     priority ENUM('Low', 'Medium', 'High') NOT NULL DEFAULT 'Medium',
     due_date DATE NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -103,32 +102,34 @@ CREATE TABLE tasks (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE progress (
-    progress_id INT AUTO_INCREMENT PRIMARY KEY,
-    assignment_id INT NOT NULL UNIQUE,
-    completed_tasks INT NOT NULL DEFAULT 0,
-    total_tasks INT NOT NULL DEFAULT 0,
-    progress_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_progress_assignment
-        FOREIGN KEY (assignment_id)
-        REFERENCES assignments(assignment_id)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Assignment progress is calculated dynamically from tasks by the backend.
+-- The current cloud database does not store a separate progress table.
 
 CREATE TABLE reminders (
     reminder_id INT AUTO_INCREMENT PRIMARY KEY,
-    task_id INT NOT NULL,
+    user_id INT NOT NULL,
+    task_id INT NULL,
+    assignment_id INT NULL,
+    reminder_message VARCHAR(255) NOT NULL,
     reminder_date DATETIME NOT NULL,
-    message VARCHAR(255) NOT NULL,
-    is_sent BOOLEAN NOT NULL DEFAULT FALSE,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_reminders_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
 
     CONSTRAINT fk_reminders_task
         FOREIGN KEY (task_id)
         REFERENCES tasks(task_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_reminders_assignment
+        FOREIGN KEY (assignment_id)
+        REFERENCES assignments(assignment_id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

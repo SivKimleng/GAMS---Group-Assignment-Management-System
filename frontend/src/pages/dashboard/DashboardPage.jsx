@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardPanel from '../../components/dashboard/DashboardPanel.jsx';
 import ProgressCard from '../../components/dashboard/ProgressCard.jsx';
@@ -8,78 +8,97 @@ import Sidebar from '../../components/layouts/Sidebar.jsx';
 import Button from '../../components/ui/Button.jsx';
 import {
   buildDashboardStats,
-  currentUser,
-  deadlines as initialDeadlines,
-  groups as initialGroups,
-  notifications,
-  progressOverview,
-  tasks as initialTasks
-} from '../../data/mockData.js';
-import { createGroupwork, getApiErrorMessage, getGroupworks, getTasks, updateTaskStatus } from '../../services/api.js';
-import { clearMockSession, getMockSession } from '../../utils/mockAuth.js';
+  buildDeadlines,
+  buildNotifications,
+  buildProgressOverview,
+  formatUser,
+  hasAuthToken,
+  mapGroupwork,
+  mapTask,
+  SELECTED_GROUPWORK_STORAGE_KEY,
+  uniqueAssignments,
+  uniqueGroupworks,
+  uniqueTasks
+} from '../../utils/dataMappers.js';
+import {
+  createGroupwork,
+  getApiErrorMessage,
+  getAssignments,
+  getGroupworks,
+  getReminders,
+  getTasks,
+  joinGroupworkByCode,
+  markReminderRead,
+  updateTaskStatus
+} from '../../services/api.js';
+import { clearSession, getSession } from '../../utils/authSession.js';
 
 const statusClasses = {
   Completed: 'bg-emerald-100 text-emerald-700',
   Pending: 'bg-amber-100 text-amber-700',
-  'In Progress': 'bg-blue-100 text-blue-700'
+  'In Progress': 'bg-blue-100 text-blue-700',
+  Review: 'bg-purple-100 text-purple-700'
 };
-
-function formatDueDate(date) {
-  if (!date) return 'No date';
-  return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function mapGroupwork(groupwork) {
-  return {
-    id: groupwork.groupwork_id,
-    name: groupwork.groupwork_name,
-    members: groupwork.member_count || 1,
-    subject: groupwork.subject,
-    progress: 0
-  };
-}
-
-function mapTask(task) {
-  return {
-    id: task.task_id,
-    title: task.task_name,
-    group: task.groupwork_name || task.assignment_name || 'Assignment',
-    status: task.status,
-    due: formatDueDate(task.due_date),
-    dueOrder: task.due_date ? new Date(task.due_date).getTime() : Number.MAX_SAFE_INTEGER
-  };
-}
 
 function DashboardPage() {
   const navigate = useNavigate();
-  const session = getMockSession();
-  const user = session?.user || currentUser;
-  const [groups, setGroups] = useState(initialGroups);
-  const [tasks, setTasks] = useState(initialTasks);
-  const [deadlines] = useState(initialDeadlines);
+  const session = getSession();
+  const user = formatUser(session?.user);
+  const [groups, setGroups] = useState([]);
+  const [rawAssignments, setRawAssignments] = useState([]);
+  const [rawTasks, setRawTasks] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortTasksByDueDate, setSortTasksByDueDate] = useState(false);
   const [notice, setNotice] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [reminders, setReminders] = useState([]);
+  const [draftGroup, setDraftGroup] = useState({
+    name: '',
+    subject: '',
+    description: ''
+  });
+  const [createdGroup, setCreatedGroup] = useState(null);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const groupFormRef = useRef(null);
 
   useEffect(() => {
     let isActive = true;
 
     async function loadDashboardData() {
-      if (!localStorage.getItem('token') && !sessionStorage.getItem('token')) {
+      if (!hasAuthToken()) {
+        setIsLoading(false);
+        setNotice('Please login to load your dashboard data from the backend.');
         return;
       }
 
       try {
-        const [groupworkResponse, taskResponse] = await Promise.all([getGroupworks(), getTasks()]);
+        const [groupworkResponse, assignmentResponse, taskResponse, reminderResponse] = await Promise.all([
+          getGroupworks(),
+          getAssignments(),
+          getTasks(),
+          getReminders()
+        ]);
 
         if (!isActive) return;
 
-        setGroups(groupworkResponse.data.map(mapGroupwork));
-        setTasks(taskResponse.data.map(mapTask));
+        const nextGroupworks = uniqueGroupworks(groupworkResponse.data);
+        const nextAssignments = uniqueAssignments(assignmentResponse.data);
+        const nextTasks = uniqueTasks(taskResponse.data);
+
+        setRawAssignments(nextAssignments);
+        setRawTasks(nextTasks);
+        setGroups(nextGroupworks.map((groupwork) => mapGroupwork(groupwork, nextAssignments, nextTasks)));
+        setTasks(nextTasks.map(mapTask));
+        setReminders(reminderResponse.data);
       } catch (error) {
         if (isActive) {
-          setNotice(getApiErrorMessage(error, 'Could not load backend dashboard data. Showing demo data.'));
+          setNotice(getApiErrorMessage(error, 'Could not load backend dashboard data.'));
         }
+      } finally {
+        if (isActive) setIsLoading(false);
       }
     }
 
@@ -89,6 +108,33 @@ function DashboardPage() {
       isActive = false;
     };
   }, []);
+
+  async function refreshDashboardData() {
+    const [groupworkResponse, assignmentResponse, taskResponse, reminderResponse] = await Promise.all([
+      getGroupworks(),
+      getAssignments(),
+      getTasks(),
+      getReminders()
+    ]);
+
+    const nextGroupworks = uniqueGroupworks(groupworkResponse.data);
+    const nextAssignments = uniqueAssignments(assignmentResponse.data);
+    const nextTasks = uniqueTasks(taskResponse.data);
+    const nextGroups = nextGroupworks.map((groupwork) => mapGroupwork(groupwork, nextAssignments, nextTasks));
+
+    setRawAssignments(nextAssignments);
+    setRawTasks(nextTasks);
+    setGroups(nextGroups);
+    setTasks(nextTasks.map(mapTask));
+    setReminders(reminderResponse.data);
+
+    return {
+      groupworks: nextGroupworks,
+      assignments: nextAssignments,
+      tasks: nextTasks,
+      groups: nextGroups
+    };
+  }
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -108,6 +154,8 @@ function DashboardPage() {
     return [...filteredTasks].sort((firstTask, secondTask) => firstTask.dueOrder - secondTask.dueOrder);
   }, [normalizedSearch, sortTasksByDueDate, tasks]);
 
+  const deadlines = useMemo(() => buildDeadlines(rawAssignments, rawTasks), [rawAssignments, rawTasks]);
+
   const visibleDeadlines = useMemo(() => {
     if (!normalizedSearch) return deadlines;
     return deadlines.filter((deadline) =>
@@ -115,23 +163,114 @@ function DashboardPage() {
     );
   }, [deadlines, normalizedSearch]);
 
+  const notifications = useMemo(() => buildNotifications(rawTasks, deadlines), [deadlines, rawTasks]);
+  const progressOverview = useMemo(
+    () => buildProgressOverview(rawAssignments, rawTasks, deadlines),
+    [deadlines, rawAssignments, rawTasks]
+  );
   const stats = buildDashboardStats(groups, tasks, deadlines);
 
-  async function handleCreateGroup() {
-    const nextNumber = groups.length + 1;
-    const groupName = `Demo Group ${nextNumber}`;
+  async function handleCreateGroup(event) {
+    event.preventDefault();
+    const groupName = draftGroup.name.trim();
+    const subject = draftGroup.subject.trim();
+
+    if (!groupName || !subject) {
+      setNotice('Group name and subject are required.');
+      return;
+    }
+
+    setIsCreatingGroup(true);
 
     try {
       const response = await createGroupwork({
         groupwork_name: groupName,
-        subject: 'New Assignment',
-        description: 'Created from the GAMS dashboard.'
+        subject,
+        description: draftGroup.description.trim()
       });
-      const newGroup = mapGroupwork(response.data);
-      setGroups([newGroup, ...groups]);
-      setNotice(`${newGroup.name} added to My Groups.`);
+      const refreshedData = await refreshDashboardData();
+      const newGroup = mapGroupwork(response.data, refreshedData.assignments, refreshedData.tasks);
+      sessionStorage.setItem(SELECTED_GROUPWORK_STORAGE_KEY, String(newGroup.id));
+      setCreatedGroup({
+        ...newGroup,
+        leaderName: user.fullName,
+        role: 'Leader'
+      });
+      setDraftGroup({ name: '', subject: '', description: '' });
+      setNotice('Group created successfully.');
     } catch (error) {
       setNotice(getApiErrorMessage(error, 'Could not create groupwork.'));
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  }
+
+  function handleShowCreateGroup() {
+    groupFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    groupFormRef.current?.querySelector('input')?.focus();
+  }
+
+  async function handleCopyGroupCode(groupCode) {
+    if (!groupCode) {
+      setNotice('This group does not have a shareable code yet.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(groupCode);
+      setNotice('Group code copied to clipboard.');
+    } catch {
+      setNotice(`Group code: ${groupCode}`);
+    }
+  }
+
+  async function handleCopyInvite(group) {
+    const inviteText = group.code
+      ? `Join my GAMS group "${group.name}" with code ${group.code}.`
+      : `Join my GAMS group "${group.name}".`;
+
+    try {
+      await navigator.clipboard.writeText(inviteText);
+      setNotice('Invite message copied to clipboard.');
+    } catch {
+      setNotice(inviteText);
+    }
+  }
+
+  async function handleJoinGroup(event) {
+    event.preventDefault();
+    const code = joinCode.trim();
+
+    if (!code) {
+      setNotice('Enter a group code before joining.');
+      return;
+    }
+
+    setIsJoining(true);
+
+    try {
+      const response = await joinGroupworkByCode(code);
+      await refreshDashboardData();
+      setJoinCode('');
+      setNotice(`Joined ${response.data.groupwork_name} successfully.`);
+    } catch (error) {
+      setNotice(getApiErrorMessage(error, 'Could not join groupwork with that code.'));
+    } finally {
+      setIsJoining(false);
+    }
+  }
+
+  async function handleMarkReminderRead(reminderId) {
+    try {
+      const response = await markReminderRead(reminderId);
+      setReminders((currentReminders) =>
+        currentReminders.map((reminder) =>
+          reminder.reminder_id === reminderId ? response.data : reminder
+        )
+      );
+      setNotice('Reminder marked as read.');
+    } catch (error) {
+      setNotice(getApiErrorMessage(error, 'Could not update reminder.'));
     }
   }
 
@@ -144,6 +283,9 @@ function DashboardPage() {
         const updatedTask = mapTask(response.data);
         setTasks((currentTasks) =>
           currentTasks.map((task) => (task.id === taskToUpdate.id ? updatedTask : task))
+        );
+        setRawTasks((currentTasks) =>
+          currentTasks.map((task) => (task.task_id === taskToUpdate.id ? response.data : task))
         );
         return;
       } catch (error) {
@@ -164,7 +306,7 @@ function DashboardPage() {
   }
 
   function handleLogout() {
-    clearMockSession();
+    clearSession();
     navigate('/');
   }
 
@@ -202,7 +344,7 @@ function DashboardPage() {
                   Review your active groups, finish high-priority tasks, and keep your team aligned before submission week.
                 </p>
               </div>
-              <Button type="button" variant="light" className="self-start" onClick={handleCreateGroup}>
+              <Button type="button" variant="light" className="self-start" onClick={handleShowCreateGroup}>
                 New Group
               </Button>
             </div>
@@ -228,6 +370,12 @@ function DashboardPage() {
             </div>
           )}
 
+          {isLoading && (
+            <p className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+              Loading dashboard data from backend...
+            </p>
+          )}
+
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {stats.map((stat) => (
               <StatCard key={stat.label} {...stat} />
@@ -237,13 +385,106 @@ function DashboardPage() {
           <section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
             <div className="grid gap-6">
               <DashboardPanel title="My Groups" action="View all">
+                <form
+                  ref={groupFormRef}
+                  onSubmit={handleCreateGroup}
+                  className="mb-4 grid gap-3 rounded-lg border border-slate-200 bg-white p-4"
+                >
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label>
+                      <span className="mb-2 block text-sm font-bold text-slate-700">Group Name</span>
+                      <input
+                        value={draftGroup.name}
+                        onChange={(event) => setDraftGroup({ ...draftGroup, name: event.target.value })}
+                        placeholder="Example: Capstone Team"
+                        className="focus-ring h-11 w-full rounded-md border border-slate-300 px-3 text-sm"
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-2 block text-sm font-bold text-slate-700">Subject</span>
+                      <input
+                        value={draftGroup.subject}
+                        onChange={(event) => setDraftGroup({ ...draftGroup, subject: event.target.value })}
+                        placeholder="Example: Cross Project"
+                        className="focus-ring h-11 w-full rounded-md border border-slate-300 px-3 text-sm"
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    <span className="mb-2 block text-sm font-bold text-slate-700">Description</span>
+                    <textarea
+                      value={draftGroup.description}
+                      onChange={(event) => setDraftGroup({ ...draftGroup, description: event.target.value })}
+                      placeholder="Optional group notes"
+                      rows={2}
+                      className="focus-ring w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <Button type="submit" className="w-full sm:w-fit" disabled={isCreatingGroup}>
+                    {isCreatingGroup ? 'Creating...' : 'Create Group'}
+                  </Button>
+                </form>
+
+                {createdGroup && (
+                  <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-teal-700">Group created successfully</p>
+                        <h3 className="mt-1 text-lg font-black text-slate-950">{createdGroup.name}</h3>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          {createdGroup.subject} - {createdGroup.members} member{createdGroup.members === 1 ? '' : 's'}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          Group code: <span className="font-black text-slate-950">{createdGroup.code || 'Not available'}</span>
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          {createdGroup.role}: {createdGroup.leaderName}
+                        </p>
+                      </div>
+                      <span className="w-fit rounded-md bg-white px-2 py-1 text-xs font-black text-teal-700 ring-1 ring-teal-200">
+                        Ready
+                      </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button to="/workspace" className="px-4">
+                        Create Assignment
+                      </Button>
+                      <Button to="/workspace" variant="secondary" className="px-4">
+                        View Workspace
+                      </Button>
+                      <Button type="button" variant="secondary" className="px-4" onClick={() => handleCopyGroupCode(createdGroup.code)}>
+                        Copy Group Code
+                      </Button>
+                      <Button type="button" variant="secondary" className="px-4" onClick={() => handleCopyInvite(createdGroup)}>
+                        Invite Members
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleJoinGroup} className="mb-4 grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-[1fr_auto]">
+                  <label>
+                    <span className="sr-only">Group code</span>
+                    <input
+                      value={joinCode}
+                      onChange={(event) => setJoinCode(event.target.value)}
+                      placeholder="Enter group code"
+                      className="focus-ring h-11 w-full rounded-md border border-slate-300 px-3 text-sm"
+                    />
+                  </label>
+                  <Button type="submit" className="min-h-11 px-4" disabled={isJoining}>
+                    {isJoining ? 'Joining...' : 'Join Group'}
+                  </Button>
+                </form>
                 <div className="grid gap-3">
                   {visibleGroups.map((group) => (
-                    <article key={group.name} className="rounded-lg border border-slate-200 p-4">
+                    <article key={group.id} className="rounded-lg border border-slate-200 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <h3 className="font-black text-slate-950">{group.name}</h3>
-                          <p className="mt-1 text-sm text-slate-500">{group.subject} - {group.members} members</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {group.subject} - {group.members} member{group.members === 1 ? '' : 's'} - {group.assignmentCount} assignment{group.assignmentCount === 1 ? '' : 's'}
+                          </p>
                         </div>
                         <span className="rounded-md bg-[#e5fbf8] px-2 py-1 text-xs font-black text-[#087a75]">{group.progress}%</span>
                       </div>
@@ -253,7 +494,9 @@ function DashboardPage() {
                     </article>
                   ))}
                   {visibleGroups.length === 0 && (
-                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">No groups match your search.</p>
+                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                      {normalizedSearch ? 'No groups match your search.' : 'No groups yet. Create or join a group to get started.'}
+                    </p>
                   )}
                 </div>
               </DashboardPanel>
@@ -268,7 +511,7 @@ function DashboardPage() {
               >
                 <div className="overflow-hidden rounded-lg border border-slate-200">
                   {visibleTasks.map((task, index) => (
-                    <div key={task.title} className={`grid gap-3 p-4 md:grid-cols-[1fr_auto_auto] md:items-center ${index > 0 ? 'border-t border-slate-200' : ''}`}>
+                    <div key={task.id} className={`grid gap-3 p-4 md:grid-cols-[1fr_auto_auto] md:items-center ${index > 0 ? 'border-t border-slate-200' : ''}`}>
                       <div>
                         <h3 className="text-sm font-black text-slate-950">{task.title}</h3>
                         <p className="mt-1 text-xs font-semibold text-slate-500">{task.group}</p>
@@ -284,17 +527,55 @@ function DashboardPage() {
                     </div>
                   ))}
                   {visibleTasks.length === 0 && (
-                    <p className="p-4 text-sm font-semibold text-slate-500">No tasks match your search.</p>
+                    <p className="p-4 text-sm font-semibold text-slate-500">
+                      {normalizedSearch ? 'No tasks match your search.' : 'No tasks found in the database yet.'}
+                    </p>
                   )}
                 </div>
               </DashboardPanel>
             </div>
 
             <div className="grid gap-6">
+              <DashboardPanel title="Reminders" action={`${reminders.filter((reminder) => !reminder.is_read).length} unread`}>
+                <div className="grid gap-3">
+                  {reminders.slice(0, 5).map((reminder) => (
+                    <article
+                      key={reminder.reminder_id}
+                      className={`rounded-lg border p-4 ${
+                        reminder.is_read ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h3 className="text-sm font-black text-slate-950">{reminder.reminder_message}</h3>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            {reminder.assignment_name || reminder.task_name || 'Reminder'} - {new Date(reminder.reminder_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {!reminder.is_read && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkReminderRead(reminder.reminder_id)}
+                            className="w-fit rounded-md bg-white px-2 py-1 text-xs font-black text-[#073ca6] ring-1 ring-slate-200"
+                          >
+                            Mark Read
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                  {reminders.length === 0 && (
+                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                      No reminders found in the database yet.
+                    </p>
+                  )}
+                </div>
+              </DashboardPanel>
+
               <DashboardPanel title="Upcoming Deadlines" action="Calendar">
                 <div className="grid gap-3">
                   {visibleDeadlines.map((deadline) => (
-                    <article key={deadline.title} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-4">
+                    <article key={deadline.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-4">
                       <div>
                         <h3 className="text-sm font-black text-slate-950">{deadline.title}</h3>
                         <p className="mt-1 text-xs font-semibold text-slate-500">{deadline.date}</p>
@@ -303,7 +584,9 @@ function DashboardPage() {
                     </article>
                   ))}
                   {visibleDeadlines.length === 0 && (
-                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">No deadlines match your search.</p>
+                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                      {normalizedSearch ? 'No deadlines match your search.' : 'No deadlines found in the database yet.'}
+                    </p>
                   )}
                 </div>
               </DashboardPanel>
@@ -315,6 +598,11 @@ function DashboardPage() {
                       {notification}
                     </p>
                   ))}
+                  {notifications.length === 0 && (
+                    <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                      No backend notifications to show yet.
+                    </p>
+                  )}
                 </div>
               </DashboardPanel>
 

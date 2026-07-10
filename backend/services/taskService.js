@@ -4,7 +4,7 @@ import groupworkRepository from '../repositories/groupworkRepository.js';
 import taskRepository from '../repositories/taskRepository.js';
 import { ensureGroupLeader, ensureGroupMember } from './permissionService.js';
 
-const allowedStatuses = ['Pending', 'In Progress', 'Completed'];
+const allowedStatuses = ['Pending', 'In Progress', 'Review', 'Completed'];
 const allowedPriorities = ['Low', 'Medium', 'High'];
 
 function validateTask(data, partial = false) {

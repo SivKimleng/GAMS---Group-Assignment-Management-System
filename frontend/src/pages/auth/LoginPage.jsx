@@ -74,7 +74,7 @@ function LoginPage() {
     }
 
     setErrors((currentErrors) => ({ ...currentErrors, email: '' }));
-    setMessage(`Mock reset instructions prepared for ${values.email}.`);
+    setMessage(`Password reset is not connected yet for ${values.email}.`);
   }
 
   return (

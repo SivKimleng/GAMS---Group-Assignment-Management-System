@@ -59,7 +59,7 @@ const swaggerDefinition = {
           assignment_name: { type: 'string', example: 'AI Ethics Presentation' },
           assignment_description: { type: 'string', example: 'Prepare slides and talking points.' },
           deadline: { type: 'string', format: 'date', example: '2026-07-20' },
-          status: { type: 'string', enum: ['Not Started', 'In Progress', 'Completed'], example: 'Not Started' },
+          status: { type: 'string', enum: ['Pending', 'In Progress', 'Review', 'Completed'], example: 'Pending' },
           priority: { type: 'string', enum: ['Low', 'Medium', 'High'], example: 'High' }
         }
       },
@@ -72,7 +72,7 @@ const swaggerDefinition = {
           task_name: { type: 'string', example: 'Collect survey data' },
           task_description: { type: 'string', example: 'Gather and clean survey responses.' },
           priority: { type: 'string', enum: ['Low', 'Medium', 'High'], example: 'Medium' },
-          status: { type: 'string', enum: ['Pending', 'In Progress', 'Completed'], example: 'Pending' },
+          status: { type: 'string', enum: ['Pending', 'In Progress', 'Review', 'Completed'], example: 'Pending' },
           due_date: { type: 'string', format: 'date', example: '2026-07-18' }
         }
       },
@@ -80,7 +80,17 @@ const swaggerDefinition = {
         type: 'object',
         required: ['status'],
         properties: {
-          status: { type: 'string', enum: ['Pending', 'In Progress', 'Completed'], example: 'Completed' }
+          status: { type: 'string', enum: ['Pending', 'In Progress', 'Review', 'Completed'], example: 'Completed' }
+        }
+      },
+      ReminderRequest: {
+        type: 'object',
+        required: ['reminder_message', 'reminder_date'],
+        properties: {
+          assignment_id: { type: 'integer', example: 1 },
+          task_id: { type: 'integer', example: 1 },
+          reminder_message: { type: 'string', example: 'Review final report before the deadline.' },
+          reminder_date: { type: 'string', format: 'date-time', example: '2026-07-20 09:00:00' }
         }
       }
     }
@@ -319,6 +329,39 @@ const swaggerDefinition = {
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
         requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/StatusRequest' } } } },
         responses: { 200: { description: 'Task status updated' } }
+      }
+    },
+    '/api/reminders': {
+      get: {
+        tags: ['Reminders'],
+        summary: 'List reminders for the current user',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: { description: 'Reminders fetched' } }
+      },
+      post: {
+        tags: ['Reminders'],
+        summary: 'Create a reminder for an assignment or task',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/ReminderRequest' } } } },
+        responses: { 201: { description: 'Reminder created' } }
+      }
+    },
+    '/api/reminders/{id}/read': {
+      patch: {
+        tags: ['Reminders'],
+        summary: 'Mark reminder as read',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Reminder marked as read' } }
+      }
+    },
+    '/api/reminders/{id}': {
+      delete: {
+        tags: ['Reminders'],
+        summary: 'Delete reminder',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Reminder deleted' } }
       }
     }
   }

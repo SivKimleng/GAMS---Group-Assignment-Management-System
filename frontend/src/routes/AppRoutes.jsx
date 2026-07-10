@@ -7,6 +7,15 @@ import DashboardPage from '../pages/dashboard/DashboardPage.jsx';
 import LeaderPanelPage from '../pages/dashboard/LeaderPanelPage.jsx';
 import TimelinePage from '../pages/timeline/TimelinePage.jsx';
 import WorkspacePage from '../pages/workspace/WorkspacePage.jsx';
+import { hasAuthToken } from '../utils/dataMappers.js';
+
+function RequireAuth({ children }) {
+  if (!hasAuthToken()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function AppRoutes() {
   return (
@@ -14,10 +23,10 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/workspace" element={<WorkspacePage />} />
-      <Route path="/leader" element={<LeaderPanelPage />} />
-      <Route path="/timeline" element={<TimelinePage />} />
+      <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
+      <Route path="/workspace" element={<RequireAuth><WorkspacePage /></RequireAuth>} />
+      <Route path="/leader" element={<RequireAuth><LeaderPanelPage /></RequireAuth>} />
+      <Route path="/timeline" element={<RequireAuth><TimelinePage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

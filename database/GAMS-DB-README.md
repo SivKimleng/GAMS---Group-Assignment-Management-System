@@ -9,8 +9,8 @@ This folder contains the MySQL database files for **GAMS - Group Assignment Mana
 - `user_groups`: connects users to groups and stores each member role.
 - `assignments`: stores group assignments, due dates, status, and priority.
 - `tasks`: stores tasks under assignments, assigned users, status, priority, and due dates.
-- `progress`: stores task progress records and progress percentages.
-- `reminders`: stores reminder messages and reminder dates for tasks.
+- Progress is calculated dynamically from task completion, so the current cloud database does not require a separate `progress` table.
+- `reminders`: stores user reminder messages, reminder dates, read status, and optional links to tasks or assignments.
 
 ## Relationships
 
@@ -20,10 +20,10 @@ This folder contains the MySQL database files for **GAMS - Group Assignment Mana
 - One group can have many assignments.
 - One assignment can have many tasks.
 - One task can be assigned to one user.
-- One task can have many progress records.
-- One task can have many reminders.
+- Assignment progress is calculated from completed tasks divided by total tasks.
+- One task or assignment can have many reminders.
 
-Child records such as group members, assignments, tasks, progress records, and reminders use foreign keys. Most child records use `ON DELETE CASCADE` so deleting a parent record also removes related child data. User references that should not destroy project history, such as task assignee and group leader, use `ON DELETE SET NULL`.
+Child records such as group members, assignments, tasks, and reminders use foreign keys. Most child records use `ON DELETE CASCADE` so deleting a parent record also removes related child data. User references that should not destroy project history, such as task assignee and group leader, use `ON DELETE SET NULL`.
 
 ## How To Run
 
@@ -56,7 +56,7 @@ The `queries.sql` file includes test queries for:
 - Showing tasks assigned to each user.
 - Showing task status and priority.
 - Showing completed and pending tasks.
-- Calculating assignment progress percentage.
+- Calculating assignment progress percentage from tasks.
 - Showing upcoming reminders.
 - Showing overdue tasks.
 

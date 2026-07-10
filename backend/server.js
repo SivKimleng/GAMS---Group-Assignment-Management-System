@@ -10,16 +10,32 @@ import groupworkRoutes from './routes/groupworkRoutes.js';
 import assignmentRoutes from './routes/assignmentRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import progressRoutes from './routes/progressRoutes.js';
+import reminderRoutes from './routes/reminderRoutes.js';
 import { errorMiddleware, notFound } from './middleware/errorMiddleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-const allowedOrigins = [clientUrl, 'http://127.0.0.1:5173'];
+const configuredOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL
+]
+  .filter(Boolean)
+  .flatMap((value) => value.split(','))
+  .map((origin) => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+const allowedOrigins = new Set([
+  ...configuredOrigins,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174'
+]);
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    const normalizedOrigin = origin?.replace(/\/$/, '');
+
+    if (!origin || allowedOrigins.has(normalizedOrigin)) {
       callback(null, true);
       return;
     }
@@ -56,6 +72,7 @@ app.use('/api/groupworks', groupworkRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/reminders', reminderRoutes);
 
 app.use(notFound);
 app.use(errorMiddleware);

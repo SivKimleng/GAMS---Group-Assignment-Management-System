@@ -4,12 +4,18 @@ import Button from '../components/ui/Button.jsx';
 import SectionHeading from '../components/ui/SectionHeading.jsx';
 import FeatureCard from '../components/landing/FeatureCard.jsx';
 import Navbar from '../components/landing/Navbar.jsx';
-import { benefits, features } from '../data/mockData.js';
+import { benefits, features } from '../data/landingData.js';
+import { hasAuthToken } from '../utils/dataMappers.js';
+import { getSession } from '../utils/authSession.js';
 
 function LandingPage() {
+  const isAuthenticated = hasAuthToken();
+  const session = isAuthenticated ? getSession() : null;
+  const firstName = session?.user?.firstName || 'there';
+
   return (
     <div className="bg-[#f5f7fb]">
-      <Navbar />
+      <Navbar isAuthenticated={isAuthenticated} />
       <main>
         <section className="page-container grid min-h-[calc(100vh-64px)] items-center gap-10 py-12 lg:grid-cols-[1fr_0.95fr] lg:py-16">
           <div>
@@ -23,11 +29,27 @@ function LandingPage() {
               GAMS helps university students organize groups, assign tasks, monitor progress, and stay ahead of deadlines in one focused workspace.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button to="/signup">Get Started</Button>
-              <Button to="/login" variant="secondary">
-                Login
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button to="/dashboard">Go to Dashboard</Button>
+                  <Button to="/workspace" variant="secondary">
+                    Open Workspace
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button to="/signup">Get Started</Button>
+                  <Button to="/login" variant="secondary">
+                    Login
+                  </Button>
+                </>
+              )}
             </div>
+            {isAuthenticated && (
+              <p className="mt-4 text-sm font-semibold text-slate-500">
+                Welcome back, {firstName}. Your session is still active.
+              </p>
+            )}
           </div>
 
           <div className="relative">
@@ -78,17 +100,34 @@ function LandingPage() {
 
         <section className="page-container pb-16">
           <div className="rounded-lg bg-[#073ca6] px-6 py-10 text-center text-white sm:px-10">
-            <h2 className="text-2xl font-black">Ready to lead your team to an A?</h2>
+            <h2 className="text-2xl font-black">
+              {isAuthenticated ? 'Ready to continue your group work?' : 'Ready to lead your team to an A?'}
+            </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-blue-100">
-              Join the academic workspace designed for productive collaboration and organized project delivery.
+              {isAuthenticated
+                ? 'Open your dashboard or workspace to keep assignments, tasks, and deadlines moving.'
+                : 'Join the academic workspace designed for productive collaboration and organized project delivery.'}
             </p>
             <div className="mt-7 flex justify-center gap-3">
-              <Button to="/signup" variant="light">
-                Create Account
-              </Button>
-          <Button to="/dashboard" variant="dark">
-            View Demo
-          </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button to="/dashboard" variant="light">
+                    Go to Dashboard
+                  </Button>
+                  <Button to="/workspace" variant="dark">
+                    Open Workspace
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button to="/signup" variant="light">
+                    Create Account
+                  </Button>
+                  <Button to="/login" variant="dark">
+                    Login
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </section>

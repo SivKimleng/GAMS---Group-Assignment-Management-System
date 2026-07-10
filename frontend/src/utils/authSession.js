@@ -1,29 +1,16 @@
 import { clearAuthSession, getStoredUser, saveAuthSession } from '../services/api.js';
+import { formatUser } from './dataMappers.js';
 
-const SESSION_KEY = 'gams_mock_session';
+const SESSION_KEY = 'gams_session';
 
-function normalizeUser(user) {
-  if (!user) return null;
-
-  const firstName = user.first_name || user.firstName || '';
-  const lastName = user.last_name || user.lastName || '';
-  const fullName = user.fullName || `${firstName} ${lastName}`.trim() || user.email;
-
-  return {
-    ...user,
-    firstName: firstName || fullName?.split(' ')[0] || 'Student',
-    fullName
-  };
-}
-
-export function saveMockSession(user, remember = false) {
+export function saveSession(user, remember = false) {
   if (user?.token) {
-    saveAuthSession({ token: user.token, user: normalizeUser(user.user) }, remember);
+    saveAuthSession({ token: user.token, user: formatUser(user.user) }, remember);
     return;
   }
 
   const payload = JSON.stringify({
-    user: normalizeUser(user),
+    user: formatUser(user),
     signedInAt: new Date().toISOString()
   });
 
@@ -34,12 +21,12 @@ export function saveMockSession(user, remember = false) {
   secondaryStorage.removeItem(SESSION_KEY);
 }
 
-export function getMockSession() {
+export function getSession() {
   const storedUser = getStoredUser();
 
   if (storedUser) {
     return {
-      user: normalizeUser(storedUser),
+      user: formatUser(storedUser),
       signedInAt: null
     };
   }
@@ -50,12 +37,13 @@ export function getMockSession() {
   try {
     return JSON.parse(rawSession);
   } catch {
-    clearMockSession();
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     return null;
   }
 }
 
-export function clearMockSession() {
+export function clearSession() {
   clearAuthSession();
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
@@ -69,8 +57,8 @@ export function userFromEmail(email) {
     .trim();
 
   return {
-    firstName: name.split(' ')[0] || 'Demo',
-    fullName: name || 'Demo Student',
+    firstName: name.split(' ')[0] || 'Student',
+    fullName: name || 'Student',
     email
   };
 }

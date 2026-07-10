@@ -5,62 +5,108 @@ import ProgressCard from '../../components/dashboard/ProgressCard.jsx';
 import MobileDashboardNav from '../../components/layouts/MobileDashboardNav.jsx';
 import Sidebar from '../../components/layouts/Sidebar.jsx';
 import Button from '../../components/ui/Button.jsx';
-import { currentUser, leaderMembers, leaderTasks } from '../../data/mockData.js';
-import { createTask, getApiErrorMessage, getTasks, updateTaskStatus } from '../../services/api.js';
-import { clearMockSession, getMockSession } from '../../utils/mockAuth.js';
+import {
+  formatUser,
+  hasAuthToken,
+  mapMember,
+  mapTask,
+  uniqueAssignments,
+  uniqueGroupworks,
+  uniqueTasks
+} from '../../utils/dataMappers.js';
+import {
+  createTask,
+  getApiErrorMessage,
+  getAssignments,
+  getGroupworkMembers,
+  getGroupworks,
+  getTasks,
+  updateTaskStatus
+} from '../../services/api.js';
+import { clearSession, getSession } from '../../utils/authSession.js';
 
 const priorities = ['High', 'Medium', 'Low'];
 
-function mapLeaderTask(task) {
-  return {
-    id: task.task_id,
-    assignmentId: task.assignment_id,
-    title: task.task_name,
-    assignee: task.assigned_user_id ? `User #${task.assigned_user_id}` : 'Unassigned',
-    priority: task.priority,
-    status: task.status
-  };
-}
-
 function LeaderPanelPage() {
   const navigate = useNavigate();
-  const session = getMockSession();
-  const user = session?.user || currentUser;
-  const [tasks, setTasks] = useState(leaderTasks);
+  const session = getSession();
+  const user = formatUser(session?.user);
+  const [assignments, setAssignments] = useState([]);
+  const [rawMembers, setRawMembers] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [rawTasks, setRawTasks] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [draftTask, setDraftTask] = useState({
     title: '',
-    assignee: leaderMembers[1].name,
+    assignmentId: '',
+    assigneeId: '',
     priority: 'Medium'
   });
   const [notice, setNotice] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isActive = true;
 
-    async function loadTasks() {
-      if (!localStorage.getItem('token') && !sessionStorage.getItem('token')) {
+    async function loadLeaderData() {
+      if (!hasAuthToken()) {
+        setIsLoading(false);
+        setNotice('Please login to load leader data from the backend.');
         return;
       }
 
       try {
-        const response = await getTasks();
+        const [groupworkResponse, assignmentResponse, taskResponse] = await Promise.all([
+          getGroupworks(),
+          getAssignments(),
+          getTasks()
+        ]);
+        const nextGroupworks = uniqueGroupworks(groupworkResponse.data);
+        const nextAssignments = uniqueAssignments(assignmentResponse.data);
+        const nextTasks = uniqueTasks(taskResponse.data);
+        const memberResponses = await Promise.all(
+          nextGroupworks.map((groupwork) => getGroupworkMembers(groupwork.groupwork_id))
+        );
 
         if (!isActive) return;
 
-        setTasks(response.data.map(mapLeaderTask));
+        const uniqueMembers = new Map();
+        memberResponses
+          .flatMap((response) => response.data)
+          .forEach((member) => {
+            uniqueMembers.set(member.user_id, member);
+          });
+        const nextRawMembers = Array.from(uniqueMembers.values());
+
+        setAssignments(nextAssignments);
+        setRawMembers(nextRawMembers);
+        setRawTasks(nextTasks);
+        setTasks(nextTasks.map(mapTask));
+        setMembers(nextRawMembers.map((member) => mapMember(member, nextTasks)));
+        setDraftTask((currentDraft) => ({
+          ...currentDraft,
+          assignmentId: currentDraft.assignmentId || nextAssignments[0]?.assignment_id || '',
+          assigneeId: currentDraft.assigneeId || nextRawMembers[0]?.user_id || ''
+        }));
       } catch (error) {
         if (isActive) {
-          setNotice(getApiErrorMessage(error, 'Could not load backend tasks. Showing demo data.'));
+          setNotice(getApiErrorMessage(error, 'Could not load backend leader data.'));
         }
+      } finally {
+        if (isActive) setIsLoading(false);
       }
     }
 
-    loadTasks();
+    loadLeaderData();
 
     return () => {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    setMembers(rawMembers.map((member) => mapMember(member, rawTasks)));
+  }, [rawMembers, rawTasks]);
 
   const completedTasks = tasks.filter((task) => task.status === 'Completed').length;
   const progress = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
@@ -81,7 +127,12 @@ function LeaderPanelPage() {
     const title = draftTask.title.trim();
     if (!title) return;
 
-    const assignmentId = tasks.find((task) => task.assignmentId)?.assignmentId;
+    if (!assignments.length) {
+      setNotice('Create an assignment first before adding tasks.');
+      return;
+    }
+
+    const assignmentId = draftTask.assignmentId || assignments[0]?.assignment_id;
 
     if (assignmentId) {
       try {
@@ -89,13 +140,15 @@ function LeaderPanelPage() {
         dueDate.setDate(dueDate.getDate() + 7);
         const response = await createTask({
           assignment_id: assignmentId,
+          assigned_user_id: draftTask.assigneeId || null,
           task_name: title,
           priority: draftTask.priority,
           status: 'Pending',
           due_date: dueDate.toISOString().slice(0, 10)
         });
-        setTasks([mapLeaderTask(response.data), ...tasks]);
-        setDraftTask({ title: '', assignee: draftTask.assignee, priority: 'Medium' });
+        setRawTasks((currentTasks) => uniqueTasks([response.data, ...currentTasks]));
+        setTasks([mapTask(response.data), ...tasks]);
+        setDraftTask({ title: '', assignmentId, assigneeId: draftTask.assigneeId, priority: 'Medium' });
         return;
       } catch (error) {
         setNotice(getApiErrorMessage(error, 'Could not create task.'));
@@ -103,16 +156,7 @@ function LeaderPanelPage() {
       }
     }
 
-    setTasks([
-      {
-        title,
-        assignee: draftTask.assignee,
-        priority: draftTask.priority,
-        status: 'Pending'
-      },
-      ...tasks
-    ]);
-    setDraftTask({ title: '', assignee: draftTask.assignee, priority: 'Medium' });
+    setNotice('Create an assignment first before adding tasks.');
   }
 
   async function handleCompleteTask(taskToUpdate) {
@@ -121,9 +165,12 @@ function LeaderPanelPage() {
     if (taskToUpdate.id) {
       try {
         const response = await updateTaskStatus(taskToUpdate.id, nextStatus);
-        const updatedTask = mapLeaderTask(response.data);
+        const updatedTask = mapTask(response.data);
         setTasks((currentTasks) =>
           currentTasks.map((task) => (task.id === taskToUpdate.id ? updatedTask : task))
+        );
+        setRawTasks((currentTasks) =>
+          currentTasks.map((task) => (task.task_id === taskToUpdate.id ? response.data : task))
         );
         return;
       } catch (error) {
@@ -132,17 +179,11 @@ function LeaderPanelPage() {
       }
     }
 
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.title === taskToUpdate.title
-          ? { ...task, status: nextStatus }
-          : task
-      )
-    );
+    setNotice('Only tasks loaded from the backend can be updated.');
   }
 
   function handleLogout() {
-    clearMockSession();
+    clearSession();
     navigate('/');
   }
 
@@ -169,7 +210,7 @@ function LeaderPanelPage() {
               <p className="text-sm font-bold text-blue-100">Leader overview</p>
               <h2 className="mt-2 text-3xl font-black">Keep the team balanced and accountable.</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100">
-                Assign tasks, check workloads, and mark responsibilities complete using mock frontend state.
+                Assign tasks, check workloads, and mark responsibilities complete using backend data.
               </p>
             </div>
             <DashboardPanel title="Completion Rate" action={`${completedTasks}/${tasks.length}`}>
@@ -190,8 +231,14 @@ function LeaderPanelPage() {
             </div>
           )}
 
+          {isLoading && (
+            <p className="mt-6 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+              Loading leader data from backend...
+            </p>
+          )}
+
           <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
-            <DashboardPanel title="Assign New Task">
+            <DashboardPanel title="Add Task">
               <form onSubmit={handleAddTask} className="grid gap-4">
                 <label>
                   <span className="mb-2 block text-sm font-bold text-slate-700">Task Name</span>
@@ -204,19 +251,36 @@ function LeaderPanelPage() {
                 </label>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label>
-                    <span className="mb-2 block text-sm font-bold text-slate-700">Assignee</span>
+                    <span className="mb-2 block text-sm font-bold text-slate-700">Assignment</span>
                     <select
-                      value={draftTask.assignee}
-                      onChange={(event) => setDraftTask({ ...draftTask, assignee: event.target.value })}
+                      value={draftTask.assignmentId}
+                      onChange={(event) => setDraftTask({ ...draftTask, assignmentId: event.target.value })}
                       className="focus-ring h-11 w-full rounded-md border border-slate-300 px-3 text-sm"
                     >
-                      {leaderMembers.map((member) => (
-                        <option key={member.name} value={member.name}>
+                      {assignments.map((assignment) => (
+                        <option key={assignment.assignment_id} value={assignment.assignment_id}>
+                          {assignment.assignment_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-sm font-bold text-slate-700">Assignee</span>
+                    <select
+                      value={draftTask.assigneeId}
+                      onChange={(event) => setDraftTask({ ...draftTask, assigneeId: event.target.value })}
+                      className="focus-ring h-11 w-full rounded-md border border-slate-300 px-3 text-sm"
+                    >
+                      <option value="">Unassigned</option>
+                      {members.map((member) => (
+                        <option key={member.id} value={member.id}>
                           {member.name}
                         </option>
                       ))}
                     </select>
                   </label>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label>
                     <span className="mb-2 block text-sm font-bold text-slate-700">Priority</span>
                     <select
@@ -232,16 +296,21 @@ function LeaderPanelPage() {
                     </select>
                   </label>
                 </div>
-                <Button type="submit" className="w-full">
-                  Assign Task
+                <Button type="submit" className="w-full" disabled={!assignments.length}>
+                  Add Task
                 </Button>
+                {!assignments.length && (
+                  <p className="text-sm font-semibold text-slate-500">
+                    Create an assignment first before adding tasks.
+                  </p>
+                )}
               </form>
             </DashboardPanel>
 
             <DashboardPanel title="Contribution Status">
               <div className="grid gap-3">
-                {leaderMembers.map((member) => (
-                  <article key={member.name} className="rounded-lg border border-slate-200 p-4">
+                {members.map((member) => (
+                  <article key={member.id} className="rounded-lg border border-slate-200 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <h3 className="font-black text-slate-950">{member.name}</h3>
@@ -256,6 +325,11 @@ function LeaderPanelPage() {
                     </div>
                   </article>
                 ))}
+                {members.length === 0 && (
+                  <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                    No group members found in the database yet.
+                  </p>
+                )}
               </div>
             </DashboardPanel>
           </section>
@@ -265,7 +339,7 @@ function LeaderPanelPage() {
               <div className="overflow-hidden rounded-lg border border-slate-200">
                 {tasks.map((task, index) => (
                   <div
-                    key={`${task.title}-${task.assignee}`}
+                    key={task.id}
                     className={`grid gap-3 p-4 md:grid-cols-[1fr_auto_auto_auto] md:items-center ${
                       index > 0 ? 'border-t border-slate-200' : ''
                     }`}
@@ -286,9 +360,16 @@ function LeaderPanelPage() {
                     >
                       {task.status}
                     </button>
-                    <span className="text-sm font-bold text-slate-500">{task.id ? 'API' : 'Mock'}</span>
+                    <span className="text-sm font-bold text-slate-500">{task.assignment}</span>
                   </div>
                 ))}
+                {tasks.length === 0 && (
+                  <p className="p-4 text-sm font-semibold text-slate-500">
+                    {assignments.length
+                      ? 'No tasks yet. Add tasks to divide the work.'
+                      : 'Create an assignment first before adding tasks.'}
+                  </p>
+                )}
               </div>
             </DashboardPanel>
 

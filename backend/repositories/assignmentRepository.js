@@ -69,7 +69,7 @@ async function create(data) {
       data.assignment_name,
       data.assignment_description || null,
       data.deadline,
-      data.status || 'Not Started',
+      data.status || 'Pending',
       data.priority || 'Medium',
       data.created_by_user_id
     ]

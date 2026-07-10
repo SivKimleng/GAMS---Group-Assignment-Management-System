@@ -2,7 +2,7 @@ import AppError from '../utils/AppError.js';
 import assignmentRepository from '../repositories/assignmentRepository.js';
 import { ensureGroupExists, ensureGroupLeader, ensureGroupMember } from './permissionService.js';
 
-const allowedStatuses = ['Not Started', 'In Progress', 'Completed'];
+const allowedStatuses = ['Pending', 'In Progress', 'Review', 'Completed'];
 const allowedPriorities = ['Low', 'Medium', 'High'];
 
 function validateAssignment(data, partial = false) {

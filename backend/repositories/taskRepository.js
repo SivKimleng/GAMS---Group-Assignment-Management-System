@@ -5,6 +5,8 @@ const taskSelect = `
   t.assignment_id,
   a.group_id AS groupwork_id,
   t.assigned_user_id,
+  TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS assigned_user_name,
+  u.email AS assigned_user_email,
   t.title AS task_name,
   t.description AS task_description,
   t.priority,
@@ -20,6 +22,7 @@ async function findAllForUser(user) {
     FROM tasks t
     INNER JOIN assignments a ON a.assignment_id = t.assignment_id
     INNER JOIN groupwork g ON g.group_id = a.group_id
+    LEFT JOIN users u ON u.user_id = t.assigned_user_id
     ORDER BY t.due_date ASC, t.task_id DESC
   `;
 
@@ -28,6 +31,7 @@ async function findAllForUser(user) {
     FROM tasks t
     INNER JOIN assignments a ON a.assignment_id = t.assignment_id
     INNER JOIN groupwork g ON g.group_id = a.group_id
+    LEFT JOIN users u ON u.user_id = t.assigned_user_id
     INNER JOIN user_groups ug ON ug.group_id = a.group_id
       AND ug.user_id = ?
       AND ug.membership_status = 'Active'
@@ -47,6 +51,7 @@ async function findById(taskId) {
      FROM tasks t
      INNER JOIN assignments a ON a.assignment_id = t.assignment_id
      INNER JOIN groupwork g ON g.group_id = a.group_id
+     LEFT JOIN users u ON u.user_id = t.assigned_user_id
      WHERE t.task_id = ?`,
     [taskId]
   );
@@ -55,9 +60,11 @@ async function findById(taskId) {
 
 async function findByAssignmentId(assignmentId) {
   const [rows] = await pool.execute(
-    `SELECT ${taskSelect}
+    `SELECT ${taskSelect}, a.title AS assignment_name, g.groupwork_name
      FROM tasks t
      INNER JOIN assignments a ON a.assignment_id = t.assignment_id
+     INNER JOIN groupwork g ON g.group_id = a.group_id
+     LEFT JOIN users u ON u.user_id = t.assigned_user_id
      WHERE t.assignment_id = ?
      ORDER BY t.due_date ASC, t.task_id DESC`,
     [assignmentId]

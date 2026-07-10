@@ -47,8 +47,7 @@ If Vite says port `5173` is in use, open the new local URL it prints in the term
 
 ## Notes
 
-- This frontend uses mock data only.
-- There is no backend connection.
-- There is no database connection.
-- Login and sign up validation use React state only.
-- `npm run dev` builds the frontend first and serves the built preview to avoid local Vite dependency optimizer issues on this Windows/OneDrive path.
+- Dashboard, workspace, leader, and timeline pages load data from the backend API.
+- Login and sign up call the backend auth routes and store the JWT locally.
+- Set `VITE_API_URL` in `.env` when the backend is not running at `http://127.0.0.1:5000/api`.
+- `npm run dev` starts the Vite frontend on `http://127.0.0.1:5173/`.
