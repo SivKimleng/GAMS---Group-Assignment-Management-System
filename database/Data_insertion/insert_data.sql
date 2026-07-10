@@ -39,15 +39,10 @@ INSERT INTO tasks (assignment_id, assigned_user_id, title, description, status, 
 (3, 2, 'Finalize literature review', 'Finish citations and summary for the literature review section.', 'Completed', 'Medium', '2026-07-21'),
 (3, 4, 'Prepare presentation visuals', 'Create visual slides for the research writing presentation.', 'In Progress', 'Low', '2026-07-25');
 
-INSERT INTO progress (assignment_id, completed_tasks, total_tasks, progress_percentage) VALUES
-(1, 0, 3, 0.00),
-(2, 0, 2, 0.00),
-(3, 1, 2, 50.00);
-
-INSERT INTO reminders (task_id, message, reminder_date, is_sent) VALUES
-(1, 'ER diagram is due soon.', '2026-07-15 09:00:00', FALSE),
-(2, 'Survey data collection deadline is tomorrow.', '2026-07-15 14:00:00', FALSE),
-(3, 'Dashboard chart deadline is coming soon. Please update progress.', '2026-07-17 10:00:00', FALSE),
-(4, 'Review authentication flow before prototype demo.', '2026-07-16 09:00:00', FALSE),
-(5, 'Share dashboard wireframe progress with the group.', '2026-07-18 15:00:00', FALSE),
-(7, 'Prepare visuals before the research team check-in.', '2026-07-24 13:00:00', FALSE);
+INSERT INTO reminders (task_id, user_id, assignment_id, reminder_message, reminder_date, is_read) VALUES
+(1, 1, 1, 'ER diagram is due soon.', '2026-07-15 09:00:00', FALSE),
+(2, 2, 1, 'Survey data collection deadline is tomorrow.', '2026-07-15 14:00:00', FALSE),
+(3, 3, 1, 'Dashboard chart deadline is coming soon. Please update progress.', '2026-07-17 10:00:00', FALSE),
+(4, 1, 2, 'Review authentication flow before prototype demo.', '2026-07-16 09:00:00', FALSE),
+(5, 4, 2, 'Share dashboard wireframe progress with the group.', '2026-07-18 15:00:00', FALSE),
+(7, 4, 3, 'Prepare visuals before the research team check-in.', '2026-07-24 13:00:00', FALSE);

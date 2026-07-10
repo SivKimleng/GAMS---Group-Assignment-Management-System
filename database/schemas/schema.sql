@@ -133,3 +133,11 @@ CREATE TABLE reminders (
         ON DELETE CASCADE
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+select * from tasks;
+delete from tasks;
+alter table tasks auto_increment = 1;
+select * from reminders;
+delete from reminders;
+alter table reminders auto_increment = 1;
