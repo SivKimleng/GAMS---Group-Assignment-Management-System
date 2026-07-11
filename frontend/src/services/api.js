@@ -93,6 +93,16 @@ export async function getGroupworkMembers(groupworkId) {
   return response.data;
 }
 
+export async function removeGroupworkMember(groupworkId, userId) {
+  const response = await api.delete(`/groupworks/${groupworkId}/members/${userId}`);
+  return response.data;
+}
+
+export async function leaveGroupwork(groupworkId) {
+  const response = await api.post(`/groupworks/${groupworkId}/leave`);
+  return response.data;
+}
+
 export async function createGroupwork(payload) {
   const response = await api.post('/groupworks', payload);
   return response.data;
@@ -133,8 +143,18 @@ export async function createTask(payload) {
   return response.data;
 }
 
+export async function createPersonalTask(payload) {
+  const response = await api.post('/tasks/personal', payload);
+  return response.data;
+}
+
 export async function updateTaskStatus(taskId, status) {
   const response = await api.patch(`/tasks/${taskId}/status`, { status });
+  return response.data;
+}
+
+export async function deleteTask(taskId) {
+  const response = await api.delete(`/tasks/${taskId}`);
   return response.data;
 }
 

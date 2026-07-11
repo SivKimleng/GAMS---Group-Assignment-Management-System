@@ -446,11 +446,11 @@ function DashboardPage() {
                       </span>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Button to="/workspace" className="px-4">
-                        Create Assignment
+                      <Button to={`/groups/${createdGroup.id}`} className="px-4">
+                        Open Group Workspace
                       </Button>
-                      <Button to="/workspace" variant="secondary" className="px-4">
-                        View Workspace
+                      <Button to={`/groups/${createdGroup.id}`} variant="secondary" className="px-4">
+                        Leader Panel
                       </Button>
                       <Button type="button" variant="secondary" className="px-4" onClick={() => handleCopyGroupCode(createdGroup.code)}>
                         Copy Group Code
@@ -478,7 +478,16 @@ function DashboardPage() {
                 </form>
                 <div className="grid gap-3">
                   {visibleGroups.map((group) => (
-                    <article key={group.id} className="rounded-lg border border-slate-200 p-4">
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => {
+                        sessionStorage.setItem(SELECTED_GROUPWORK_STORAGE_KEY, String(group.id));
+                        navigate(`/groups/${group.id}`);
+                      }}
+                      className="w-full rounded-lg border border-slate-200 p-4 text-left transition hover:border-[#139f98] hover:bg-teal-50"
+                      aria-label={`Open ${group.name}`}
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <h3 className="font-black text-slate-950">{group.name}</h3>
@@ -491,7 +500,7 @@ function DashboardPage() {
                       <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                         <div className="h-full rounded-full bg-[#139f98]" style={{ width: `${group.progress}%` }} />
                       </div>
-                    </article>
+                    </button>
                   ))}
                   {visibleGroups.length === 0 && (
                     <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">

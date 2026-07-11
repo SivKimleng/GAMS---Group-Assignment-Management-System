@@ -70,6 +70,14 @@ async function create(data) {
   return findById(result.insertId);
 }
 
+async function createSystemNotice(userId, reminderMessage, connection = pool) {
+  await connection.execute(
+    `INSERT INTO reminders (user_id, task_id, assignment_id, reminder_message, reminder_date, is_read)
+     VALUES (?, NULL, NULL, ?, NOW(), 0)`,
+    [userId, reminderMessage]
+  );
+}
+
 async function markRead(reminderId) {
   await pool.execute(
     `UPDATE reminders SET is_read = 1 WHERE reminder_id = ?`,
@@ -90,6 +98,7 @@ export default {
   findAllForUser,
   findById,
   create,
+  createSystemNotice,
   markRead,
   remove
 };

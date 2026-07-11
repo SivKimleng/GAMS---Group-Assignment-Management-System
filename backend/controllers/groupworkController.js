@@ -64,6 +64,24 @@ async function getMembers(req, res, next) {
   }
 }
 
+async function removeMember(req, res, next) {
+  try {
+    await groupworkService.removeMember(req.user, req.params.id, req.params.userId);
+    sendSuccess(res, 200, 'Group member removed successfully', null);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function leave(req, res, next) {
+  try {
+    const result = await groupworkService.leave(req.user, req.params.id);
+    sendSuccess(res, 200, result.deleted ? 'Group deleted successfully' : 'You left the group successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export default {
   create,
   getAll,
@@ -71,5 +89,7 @@ export default {
   update,
   remove,
   join,
-  getMembers
+  getMembers,
+  removeMember,
+  leave
 };

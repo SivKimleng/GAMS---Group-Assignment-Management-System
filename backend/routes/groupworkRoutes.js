@@ -14,7 +14,9 @@ router.get('/:id', groupworkController.getById);
 router.put('/:id', groupworkController.update);
 router.delete('/:id', groupworkController.remove);
 router.post('/:id/join', groupworkController.join);
+router.post('/:id/leave', groupworkController.leave);
 router.get('/:id/members', groupworkController.getMembers);
+router.delete('/:id/members/:userId', groupworkController.removeMember);
 router.get('/:groupworkId/assignments', assignmentController.getByGroupwork);
 
 export default router;

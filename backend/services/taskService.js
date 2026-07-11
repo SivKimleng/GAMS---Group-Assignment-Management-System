@@ -52,6 +52,18 @@ async function create(user, data) {
   return taskRepository.create(data);
 }
 
+async function createPersonal(user, data) {
+  validateTask(data);
+  const assignment = await ensureAssignment(data.assignment_id);
+  await ensureGroupMember(user, assignment.groupwork_id);
+
+  return taskRepository.create({
+    ...data,
+    assigned_user_id: user.user_id,
+    is_private: true
+  });
+}
+
 async function getAll(user) {
   return taskRepository.findAllForUser(user);
 }
@@ -61,6 +73,10 @@ async function getById(user, taskId) {
 
   if (!task) {
     throw new AppError('Task not found', 404);
+  }
+
+  if (task.is_private && Number(task.assigned_user_id) !== Number(user.user_id) && user.role !== 'Admin') {
+    throw new AppError('This private task is only available to its owner', 403);
   }
 
   await ensureGroupMember(user, task.groupwork_id);
@@ -99,7 +115,15 @@ async function updateStatus(user, taskId, status) {
     throw new AppError('Task not found', 404);
   }
 
-  const canLead = user.role === 'Admin' || await groupworkRepository.isLeader(user.user_id, task.groupwork_id);
+  if (task.is_private && Number(task.assigned_user_id) !== Number(user.user_id) && user.role !== 'Admin') {
+    throw new AppError('Only the owner can update a private task', 403);
+  }
+
+  if (task.is_private) {
+    throw new AppError('Private tasks can only have their status updated by the owner', 403);
+  }
+
+  const canLead = !task.is_private && (user.role === 'Admin' || await groupworkRepository.isLeader(user.user_id, task.groupwork_id));
   const isAssignedUser = task.assigned_user_id === user.user_id;
 
   if (!canLead && !isAssignedUser) {
@@ -116,6 +140,14 @@ async function remove(user, taskId) {
     throw new AppError('Task not found', 404);
   }
 
+  if (task.is_private) {
+    if (Number(task.assigned_user_id) !== Number(user.user_id) && user.role !== 'Admin') {
+      throw new AppError('Only the owner can delete a private task', 403);
+    }
+    await taskRepository.remove(taskId);
+    return true;
+  }
+
   await ensureGroupLeader(user, task.groupwork_id);
   await taskRepository.remove(taskId);
   return true;
@@ -129,6 +161,7 @@ async function getByAssignment(user, assignmentId) {
 
 export default {
   create,
+  createPersonal,
   getAll,
   getById,
   update,

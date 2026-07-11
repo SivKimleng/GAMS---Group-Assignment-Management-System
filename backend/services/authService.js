@@ -3,8 +3,6 @@ import jwt from 'jsonwebtoken';
 import AppError from '../utils/AppError.js';
 import userRepository from '../repositories/userRepository.js';
 
-const allowedRoles = ['Student', 'Instructor', 'Admin'];
-
 function buildToken(user) {
   return jwt.sign(
     {
@@ -29,7 +27,9 @@ async function register(data) {
     throw new AppError('Email is already registered', 409);
   }
 
-  const role = allowedRoles.includes(data.role) ? data.role : 'Student';
+  // Public registration must not allow a caller to grant themselves Instructor
+  // or Admin access. Those roles are assigned later by an authenticated admin.
+  const role = 'Student';
   const passwordHash = await bcrypt.hash(data.password, 10);
   const user = await userRepository.create({
     first_name: data.first_name.trim(),

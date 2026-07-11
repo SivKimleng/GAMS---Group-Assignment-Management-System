@@ -164,6 +164,7 @@ export function mapTask(task) {
     assignment: task.assignment_name || 'Assignment',
     assignee: assigneeName,
     priority: task.priority || 'Medium',
+    isPrivate: Boolean(task.is_private),
     status: task.status || 'Pending',
     due: formatDateLabel(task.due_date),
     dueDate: task.due_date,

@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+router.post('/personal', validateRequired(['assignment_id', 'task_name', 'due_date']), taskController.createPersonal);
 router.post('/', validateRequired(['assignment_id', 'task_name', 'due_date']), taskController.create);
 router.get('/', taskController.getAll);
 router.get('/:id', taskController.getById);

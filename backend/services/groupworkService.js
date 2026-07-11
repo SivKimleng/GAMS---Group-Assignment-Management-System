@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import AppError from '../utils/AppError.js';
 import groupworkRepository from '../repositories/groupworkRepository.js';
+import reminderRepository from '../repositories/reminderRepository.js';
 import { ensureGroupExists, ensureGroupLeader, ensureGroupMember } from './permissionService.js';
 
 function generateGroupworkCode() {
@@ -70,13 +71,25 @@ async function update(user, groupworkId, data) {
 }
 
 async function remove(user, groupworkId) {
-  await ensureGroupExists(groupworkId);
+  const groupwork = await ensureGroupExists(groupworkId);
   await ensureGroupLeader(user, groupworkId);
 
-  const deleted = await groupworkRepository.remove(groupworkId);
-
-  if (!deleted) {
-    throw new AppError('Groupwork not found', 404);
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const memberIds = await groupworkRepository.findActiveMemberIds(groupworkId, connection);
+    const message = `The group "${groupwork.groupwork_name}" has been deleted by its leader.`;
+    for (const memberId of memberIds) {
+      await reminderRepository.createSystemNotice(memberId, message, connection);
+    }
+    const deleted = await groupworkRepository.remove(groupworkId, connection);
+    if (!deleted) throw new AppError('Groupwork not found', 404);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
 
   return true;
@@ -109,6 +122,36 @@ async function getMembers(user, groupworkId) {
   return groupworkRepository.findMembers(groupworkId);
 }
 
+async function removeMember(user, groupworkId, memberUserId) {
+  await ensureGroupExists(groupworkId);
+  await ensureGroupLeader(user, groupworkId);
+
+  const membership = await groupworkRepository.findMembership(memberUserId, groupworkId);
+  if (!membership) throw new AppError('Active group member not found', 404);
+  if (membership.group_role === 'Leader') {
+    throw new AppError('The group leader cannot be removed from the group', 400);
+  }
+
+  const removed = await groupworkRepository.removeMember(memberUserId, groupworkId);
+  if (!removed) throw new AppError('Could not remove group member', 400);
+  return true;
+}
+
+async function leave(user, groupworkId) {
+  const groupwork = await ensureGroupExists(groupworkId);
+  const membership = await groupworkRepository.findMembership(user.user_id, groupworkId);
+  if (!membership && user.role !== 'Admin') throw new AppError('You are not an active group member', 403);
+
+  if (membership?.group_role === 'Leader' || Number(groupwork.leader_user_id) === Number(user.user_id)) {
+    await remove(user, groupworkId);
+    return { deleted: true };
+  }
+
+  const left = await groupworkRepository.removeMember(user.user_id, groupworkId);
+  if (!left) throw new AppError('Could not leave group', 400);
+  return { deleted: false };
+}
+
 export default {
   create,
   getAll,
@@ -116,5 +159,7 @@ export default {
   update,
   remove,
   join,
-  getMembers
+  getMembers,
+  removeMember,
+  leave
 };

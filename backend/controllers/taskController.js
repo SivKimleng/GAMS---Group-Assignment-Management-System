@@ -10,6 +10,15 @@ async function create(req, res, next) {
   }
 }
 
+async function createPersonal(req, res, next) {
+  try {
+    const task = await taskService.createPersonal(req.user, req.body);
+    sendSuccess(res, 201, 'Private task created successfully', task);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getAll(req, res, next) {
   try {
     const tasks = await taskService.getAll(req.user);
@@ -66,6 +75,7 @@ async function getByAssignment(req, res, next) {
 
 export default {
   create,
+  createPersonal,
   getAll,
   getById,
   update,

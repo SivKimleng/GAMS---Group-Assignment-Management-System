@@ -91,8 +91,8 @@ async function update(groupworkId, changes) {
   return findById(groupworkId);
 }
 
-async function remove(groupworkId) {
-  const [result] = await pool.execute(`DELETE FROM groupwork WHERE group_id = ?`, [groupworkId]);
+async function remove(groupworkId, connection = pool) {
+  const [result] = await connection.execute(`DELETE FROM groupwork WHERE group_id = ?`, [groupworkId]);
   return result.affectedRows > 0;
 }
 
@@ -134,6 +134,24 @@ async function findMembers(groupworkId) {
   return rows;
 }
 
+async function findActiveMemberIds(groupworkId, connection = pool) {
+  const [rows] = await connection.execute(
+    `SELECT user_id FROM user_groups WHERE group_id = ? AND membership_status = 'Active'`,
+    [groupworkId]
+  );
+  return rows.map((row) => row.user_id);
+}
+
+async function removeMember(userId, groupworkId) {
+  const [result] = await pool.execute(
+    `UPDATE user_groups
+     SET membership_status = 'Left'
+     WHERE user_id = ? AND group_id = ? AND membership_status = 'Active'`,
+    [userId, groupworkId]
+  );
+  return result.affectedRows > 0;
+}
+
 async function isLeader(userId, groupworkId) {
   const [rows] = await pool.execute(
     `SELECT 1
@@ -156,8 +174,10 @@ export default {
   create,
   update,
   remove,
+  findActiveMemberIds,
   addMember,
   findMembership,
   findMembers,
+  removeMember,
   isLeader
 };

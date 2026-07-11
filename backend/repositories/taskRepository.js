@@ -11,6 +11,7 @@ const taskSelect = `
   t.description AS task_description,
   t.priority,
   t.status,
+  t.is_private,
   t.due_date,
   t.created_at,
   t.updated_at
@@ -35,12 +36,13 @@ async function findAllForUser(user) {
     INNER JOIN user_groups ug ON ug.group_id = a.group_id
       AND ug.user_id = ?
       AND ug.membership_status = 'Active'
+    WHERE COALESCE(t.is_private, 0) = 0 OR t.assigned_user_id = ?
     ORDER BY t.due_date ASC, t.task_id DESC
   `;
 
   const [rows] = user.role === 'Admin'
     ? await pool.execute(adminSql)
-    : await pool.execute(memberSql, [user.user_id]);
+    : await pool.execute(memberSql, [user.user_id, user.user_id]);
 
   return rows;
 }
@@ -74,8 +76,8 @@ async function findByAssignmentId(assignmentId) {
 
 async function create(data) {
   const [result] = await pool.execute(
-    `INSERT INTO tasks (assignment_id, assigned_user_id, title, description, priority, status, due_date)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (assignment_id, assigned_user_id, title, description, priority, status, due_date, is_private)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.assignment_id,
       data.assigned_user_id || null,
@@ -83,7 +85,8 @@ async function create(data) {
       data.task_description || null,
       data.priority || 'Medium',
       data.status || 'Pending',
-      data.due_date
+      data.due_date,
+      data.is_private ? 1 : 0
     ]
   );
   return findById(result.insertId);

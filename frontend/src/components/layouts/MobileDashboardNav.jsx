@@ -6,7 +6,6 @@ const mobileNavItems = [
   { label: 'Landing', path: '/', icon: 'home' },
   { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
   { label: 'Workspace', path: '/workspace', icon: 'folder' },
-  { label: 'Leader', path: '/leader', icon: 'shield' },
   { label: 'Timeline', path: '/timeline', icon: 'clock' }
 ];
 

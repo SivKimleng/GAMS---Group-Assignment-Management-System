@@ -85,6 +85,7 @@ CREATE TABLE tasks (
     description TEXT,
     status ENUM('Pending', 'In Progress', 'Review', 'Completed') NOT NULL DEFAULT 'Pending',
     priority ENUM('Low', 'Medium', 'High') NOT NULL DEFAULT 'Medium',
+    is_private BOOLEAN NOT NULL DEFAULT FALSE,
     due_date DATE NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -6,7 +6,6 @@ import { fallbackUser } from '../../utils/dataMappers.js';
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
   { label: 'Workspace', path: '/workspace', icon: 'folder' },
-  { label: 'Leader Panel', path: '/leader', icon: 'shield' },
   { label: 'Timeline', path: '/timeline', icon: 'clock' }
 ];
 
