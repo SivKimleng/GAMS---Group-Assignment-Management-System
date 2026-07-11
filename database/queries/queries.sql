@@ -113,14 +113,14 @@ ORDER BY g.groupwork_name, a.title;
 SELECT
     r.reminder_id,
     r.reminder_date,
-    r.message,
-    r.is_sent,
+    r.reminder_message,
+    r.is_read,
     t.title AS task_title,
     CONCAT(u.first_name, ' ', u.last_name) AS assigned_to
 FROM reminders r
 JOIN tasks t ON r.task_id = t.task_id
 LEFT JOIN users u ON t.assigned_user_id = u.user_id
-WHERE r.is_sent = FALSE
+WHERE r.is_read = FALSE
   AND r.reminder_date >= NOW()
 ORDER BY r.reminder_date;
 
