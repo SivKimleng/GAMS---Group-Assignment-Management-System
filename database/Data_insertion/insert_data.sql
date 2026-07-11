@@ -28,7 +28,7 @@ INSERT INTO user_groups (user_id, group_id, member_role, membership_status) VALU
 INSERT INTO assignments (group_id, title, description, due_date, status, priority, created_by_user_id) VALUES
 (1, 'AI Ethics Presentation', 'Prepare slides and talking points for the AI ethics group presentation.', '2026-07-20', 'In Progress', 'High', 1),
 (2, 'Mobile UI Prototype', 'Finish the prototype review and dashboard wireframe for the mobile app project.', '2026-07-22', 'In Progress', 'Medium', 3),
-(3, 'Research Draft', 'Complete literature review and first full research report draft.', '2026-07-28', 'Not Started', 'Medium', 2);
+(3, 'Research Draft', 'Complete literature review and first full research report draft.', '2026-07-28', 'Not Started', 'Pending', 2);
 
 INSERT INTO tasks (assignment_id, assigned_user_id, title, description, status, priority, due_date) VALUES
 (1, 1, 'Prepare ER diagram', 'Create the database ER diagram for the final project submission.', 'In Progress', 'High', '2026-07-15'),
