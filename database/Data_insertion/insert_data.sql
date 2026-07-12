@@ -1,5 +1,16 @@
 USE GAMS;
 
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS reminders;
+DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS assignments;
+DROP TABLE IF EXISTS user_groups;
+DROP TABLE IF EXISTS groupwork;
+DROP TABLE IF EXISTS users;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
 -- Demo password for all users: Password123!
 INSERT INTO users (first_name, last_name, email, password_hash, role) VALUES
 ('Demo', 'Student', 'demo.student@gams.edu', '$2b$10$qVCUuOwm00GXsTpDpajcK.J.8gM/PZrGHQlKYnqkPmoORMFt3pFxO', 'Student'),
@@ -28,7 +39,7 @@ INSERT INTO user_groups (user_id, group_id, member_role, membership_status) VALU
 INSERT INTO assignments (group_id, title, description, due_date, status, priority, created_by_user_id) VALUES
 (1, 'AI Ethics Presentation', 'Prepare slides and talking points for the AI ethics group presentation.', '2026-07-20', 'In Progress', 'High', 1),
 (2, 'Mobile UI Prototype', 'Finish the prototype review and dashboard wireframe for the mobile app project.', '2026-07-22', 'In Progress', 'Medium', 3),
-(3, 'Research Draft', 'Complete literature review and first full research report draft.', '2026-07-28', 'Not Started', 'Pending', 2);
+(3, 'Research Draft', 'Complete literature review and first full research report draft.', '2026-07-28', 'Pending', 'Low', 2);
 
 INSERT INTO tasks (assignment_id, assigned_user_id, title, description, status, priority, due_date) VALUES
 (1, 1, 'Prepare ER diagram', 'Create the database ER diagram for the final project submission.', 'In Progress', 'High', '2026-07-15'),
@@ -46,3 +57,10 @@ INSERT INTO reminders (task_id, user_id, assignment_id, reminder_message, remind
 (4, 1, 2, 'Review authentication flow before prototype demo.', '2026-07-16 09:00:00', FALSE),
 (5, 4, 2, 'Share dashboard wireframe progress with the group.', '2026-07-18 15:00:00', FALSE),
 (7, 4, 3, 'Prepare visuals before the research team check-in.', '2026-07-24 13:00:00', FALSE);
+
+select * from users;
+select * from groupwork;
+select * from user_groups;
+select * from assignments;
+select * from tasks;
+select * from reminders;

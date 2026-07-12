@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
@@ -12,6 +14,10 @@ import taskRoutes from './routes/taskRoutes.js';
 import progressRoutes from './routes/progressRoutes.js';
 import reminderRoutes from './routes/reminderRoutes.js';
 import { errorMiddleware, notFound } from './middleware/errorMiddleware.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -90,6 +96,7 @@ async function startServer() {
     process.exit(1);
   }
 }
+
 
 startServer();
 
