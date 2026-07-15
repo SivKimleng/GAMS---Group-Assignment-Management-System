@@ -168,6 +168,7 @@ function TimelinePage() {
                         <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{event.date}</p>
                         <h3 className="mt-1 font-black text-slate-950">{event.title}</h3>
                         <p className="mt-1 text-sm font-semibold text-slate-500">{event.group}</p>
+                        {event.status === 'Completed' && <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-700">✓ Done</span>}
                       </div>
                       <span className={`w-fit rounded-md px-2 py-1 text-xs font-black ${typeStyles[event.type] || 'bg-slate-100 text-slate-600'}`}>
                         {event.type}
@@ -193,6 +194,8 @@ function TimelinePage() {
                     <h3 className="text-xl font-black text-slate-950">{selectedEvent.title}</h3>
                     <p className="mt-2 text-sm font-bold text-slate-500">{selectedEvent.group}</p>
                     <p className="mt-4 text-sm leading-6 text-slate-600">{selectedEvent.description}</p>
+                    {selectedEvent.taskId && <Button to={`/tasks/${selectedEvent.taskId}/submit`} className="mt-5">Open assignment</Button>}
+                    {!selectedEvent.taskId && selectedEvent.groupworkId && <Button to={`/groups/${selectedEvent.groupworkId}`} className="mt-5">Open group assignment</Button>}
                   </>
                 ) : (
                   <p className="text-sm font-semibold text-slate-500">Select an event after backend data loads.</p>

@@ -2,6 +2,7 @@ import express from 'express';
 import taskController from '../controllers/taskController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import { validateRequired } from '../middleware/validateMiddleware.js';
+import submissionController from '../controllers/submissionController.js';
 
 const router = express.Router();
 
@@ -11,6 +12,9 @@ router.post('/personal', validateRequired(['assignment_id', 'task_name', 'due_da
 router.post('/', validateRequired(['assignment_id', 'task_name', 'due_date']), taskController.create);
 router.get('/', taskController.getAll);
 router.get('/:id', taskController.getById);
+router.get('/:taskId/submission', submissionController.get);
+router.post('/:taskId/submission', submissionController.submit);
+router.post('/:taskId/unsubmit', submissionController.unsubmit);
 router.put('/:id', taskController.update);
 router.patch('/:id/status', validateRequired(['status']), taskController.updateStatus);
 router.delete('/:id', taskController.remove);

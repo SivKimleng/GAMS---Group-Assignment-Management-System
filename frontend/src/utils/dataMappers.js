@@ -318,6 +318,8 @@ export function buildTimelineEvents(assignments, tasks, groups) {
     date: formatDateLabel(assignment.deadline),
     dateOrder: dateOrder(assignment.deadline),
     type: 'Deadline',
+    assignmentId: assignment.assignment_id,
+    groupworkId: assignment.groupwork_id,
     group: assignment.groupwork_name || 'Groupwork',
     description: assignment.assignment_description || `${assignment.priority || 'Medium'} priority assignment.`
   }));
@@ -328,6 +330,10 @@ export function buildTimelineEvents(assignments, tasks, groups) {
     date: formatDateLabel(task.due_date),
     dateOrder: dateOrder(task.due_date),
     type: 'Task',
+    taskId: task.task_id,
+    assignmentId: task.assignment_id,
+    groupworkId: task.groupwork_id,
+    status: task.status,
     group: task.groupwork_name || task.assignment_name || 'Assignment',
     description: task.task_description || `${task.status || 'Pending'} task assigned to ${task.assigned_user_name || 'the team'}.`
   }));

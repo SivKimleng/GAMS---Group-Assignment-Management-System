@@ -1,21 +1,15 @@
 import express from 'express';
-import pool from '../config/db.js';
+import userController from '../controllers/userController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
+import roleMiddleware from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
-  try {
-    const [users] = await pool.query(
-      `SELECT user_id, first_name, last_name, email, role, created_at, updated_at
-       FROM users
-       ORDER BY user_id`
-    );
+router.use(authMiddleware);
 
-    res.json(users);
-  } catch (error) {
-    console.error('GET /api/users failed:', error);
-    res.status(500).json({ message: 'Failed to fetch users' });
-  }
-});
+router.get('/', userController.getAll);
+router.get('/:id', userController.getById);
+router.put('/:id', userController.update);
+router.delete('/:id', roleMiddleware('Admin'), userController.remove);
 
 export default router;

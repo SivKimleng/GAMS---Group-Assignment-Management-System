@@ -14,6 +14,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Tokens are tied to the backend signing secret, not the Vite port.  If an old
+// development token is encountered, clear it and send the user to sign in
+// rather than leaving the dashboard stuck with repeated "invalid token" errors.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('gams_session');
+      if (window.location.pathname !== '/login') window.location.assign('/login');
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function getApiErrorMessage(error, fallback = 'Request failed. Please try again.') {
   return error.response?.data?.message || error.message || fallback;
 }
@@ -143,6 +161,16 @@ export async function createTask(payload) {
   return response.data;
 }
 
+export async function getAssignmentMaterials(assignmentId) {
+  const response = await api.get(`/assignments/${assignmentId}/materials`);
+  return response.data;
+}
+
+export async function addAssignmentMaterial(assignmentId, payload) {
+  const response = await api.post(`/assignments/${assignmentId}/materials`, payload);
+  return response.data;
+}
+
 export async function createPersonalTask(payload) {
   const response = await api.post('/tasks/personal', payload);
   return response.data;
@@ -155,6 +183,26 @@ export async function updateTaskStatus(taskId, status) {
 
 export async function deleteTask(taskId) {
   const response = await api.delete(`/tasks/${taskId}`);
+  return response.data;
+}
+
+export async function getTask(taskId) {
+  const response = await api.get(`/tasks/${taskId}`);
+  return response.data;
+}
+
+export async function getTaskSubmission(taskId) {
+  const response = await api.get(`/tasks/${taskId}/submission`);
+  return response.data;
+}
+
+export async function submitTask(taskId, payload) {
+  const response = await api.post(`/tasks/${taskId}/submission`, payload);
+  return response.data;
+}
+
+export async function unsubmitTask(taskId) {
+  const response = await api.post(`/tasks/${taskId}/unsubmit`);
   return response.data;
 }
 

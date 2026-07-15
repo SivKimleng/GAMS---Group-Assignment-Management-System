@@ -4,16 +4,16 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from './docs/swagger.js';
-import { testConnection } from './config/db.js';
-import authRoutes from './routes/authRoutes.js';
-import userRoutes from './routes/userRoutes.js';
-import groupworkRoutes from './routes/groupworkRoutes.js';
-import assignmentRoutes from './routes/assignmentRoutes.js';
-import taskRoutes from './routes/taskRoutes.js';
-import progressRoutes from './routes/progressRoutes.js';
-import reminderRoutes from './routes/reminderRoutes.js';
-import { errorMiddleware, notFound } from './middleware/errorMiddleware.js';
+import swaggerSpec from './src/docs/swagger.js';
+import { testConnection } from './src/config/db.js';
+import authRoutes from './src/routes/authRoutes.js';
+import userRoutes from './src/routes/userRoutes.js';
+import groupworkRoutes from './src/routes/groupworkRoutes.js';
+import assignmentRoutes from './src/routes/assignmentRoutes.js';
+import taskRoutes from './src/routes/taskRoutes.js';
+import progressRoutes from './src/routes/progressRoutes.js';
+import reminderRoutes from './src/routes/reminderRoutes.js';
+import { errorMiddleware, notFound } from './src/middleware/errorMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +41,10 @@ app.use(cors({
   origin(origin, callback) {
     const normalizedOrigin = origin?.replace(/\/$/, '');
 
-    if (!origin || allowedOrigins.has(normalizedOrigin)) {
+    // Vite picks the next free port in development.  Keep local development
+    // sessions usable instead of rejecting a valid login just because the port changed.
+    const isLocalDevOrigin = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(normalizedOrigin || '');
+    if (!origin || allowedOrigins.has(normalizedOrigin) || isLocalDevOrigin) {
       callback(null, true);
       return;
     }
@@ -50,7 +53,8 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+// Submission files are encoded as data URLs by the current browser-only upload flow.
+app.use(express.json({ limit: '15mb' }));
 
 app.get('/', (req, res) => {
   res.json({

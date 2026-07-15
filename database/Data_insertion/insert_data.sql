@@ -3,6 +3,9 @@ USE GAMS;
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS reminders;
+DROP TABLE IF EXISTS submission_materials;
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS assignment_files;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS assignments;
 DROP TABLE IF EXISTS user_groups;
@@ -58,9 +61,26 @@ INSERT INTO reminders (task_id, user_id, assignment_id, reminder_message, remind
 (5, 4, 2, 'Share dashboard wireframe progress with the group.', '2026-07-18 15:00:00', FALSE),
 (7, 4, 3, 'Prepare visuals before the research team check-in.', '2026-07-24 13:00:00', FALSE);
 
+-- New attachment tables.  The submission materials show one student providing
+-- both a document link and a second supporting link.
+INSERT INTO assignment_files (assignment_id, file_name, file_url) VALUES
+(1, 'AI ethics brief.pdf', 'https://example.com/gams/ai-ethics-brief.pdf'),
+(1, 'Presentation reference link', 'https://example.com/gams/ai-ethics-references'),
+(2, 'Mobile dashboard wireframe.png', 'https://example.com/gams/mobile-wireframe.png');
+
+INSERT INTO submissions (task_id, submitted_by_user_id, submission_url, file_name, is_submitted, is_late, submitted_at) VALUES
+(6, 2, 'https://example.com/gams/literature-review.docx', 'literature-review.docx', TRUE, FALSE, '2026-07-14 10:30:00');
+
+INSERT INTO submission_materials (submission_id, material_name, material_url) VALUES
+(1, 'literature-review.docx', 'https://example.com/gams/literature-review.docx'),
+(1, 'Source notes link', 'https://example.com/gams/research-source-notes');
+
 select * from users;
 select * from groupwork;
 select * from user_groups;
 select * from assignments;
 select * from tasks;
 select * from reminders;
+select * from assignment_files;
+select * from submissions;
+select * from submission_materials;

@@ -28,12 +28,18 @@ async function findAllForUser(user) {
     INNER JOIN user_groups ug ON ug.group_id = a.group_id
       AND ug.user_id = ?
       AND ug.membership_status = 'Active'
+    WHERE EXISTS (
+      SELECT 1 FROM tasks assigned_task
+      WHERE assigned_task.assignment_id = a.assignment_id
+        AND assigned_task.assigned_user_id = ?
+        AND COALESCE(assigned_task.is_private, 0) = 0
+    )
     ORDER BY a.due_date ASC, a.assignment_id DESC
   `;
 
   const [rows] = user.role === 'Admin'
     ? await pool.execute(adminSql)
-    : await pool.execute(memberSql, [user.user_id]);
+    : await pool.execute(memberSql, [user.user_id, user.user_id]);
 
   return rows;
 }

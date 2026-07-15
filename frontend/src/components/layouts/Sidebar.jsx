@@ -120,6 +120,9 @@ function Sidebar({ user = fallbackUser, onLogout }) {
       </div>
 
       <div className="border-t border-slate-200 bg-white p-4">
+        <Link to="/help-support" className="focus-ring mb-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#eef4ff] px-4 text-sm font-black text-[#073ca6]">
+          Help &amp; Support
+        </Link>
         <button
           type="button"
           onClick={onLogout}

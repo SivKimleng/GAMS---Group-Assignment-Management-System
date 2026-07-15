@@ -80,6 +80,12 @@ async function getById(user, taskId) {
   }
 
   await ensureGroupMember(user, task.groupwork_id);
+  if (!task.is_private && Number(task.assigned_user_id) === Number(user.user_id) && task.status === 'Pending') {
+    return taskRepository.updateStatus(taskId, 'In Progress');
+  }
+  if (!task.is_private && (user.role === 'Admin' || await groupworkRepository.isLeader(user.user_id, task.groupwork_id)) && task.status === 'Review') {
+    return taskRepository.updateStatus(taskId, 'Completed');
+  }
   return task;
 }
 
@@ -124,12 +130,14 @@ async function updateStatus(user, taskId, status) {
   }
 
   const canLead = !task.is_private && (user.role === 'Admin' || await groupworkRepository.isLeader(user.user_id, task.groupwork_id));
-  const isAssignedUser = task.assigned_user_id === user.user_id;
+  const isAssignedUser = Number(task.assigned_user_id) === Number(user.user_id);
 
   if (!canLead && !isAssignedUser) {
     throw new AppError('Only the assigned user, group leader, or admin can update task status', 403);
   }
 
+  // Lifecycle changes are driven by viewing/submitting/reviewing, not an arbitrary status picker.
+  if (!canLead && !['In Progress'].includes(status)) throw new AppError('Members cannot set task status directly', 403);
   return taskRepository.updateStatus(taskId, status);
 }
 
