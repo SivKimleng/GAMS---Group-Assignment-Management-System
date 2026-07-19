@@ -24,7 +24,7 @@ async function submit({ taskId, userId, materials, isLate }) {
      VALUES (?, ?, ?, ?, 1, ?, NOW())
      ON DUPLICATE KEY UPDATE submitted_by_user_id = VALUES(submitted_by_user_id), submission_url = VALUES(submission_url),
        file_name = VALUES(file_name), is_submitted = 1, is_late = VALUES(is_late), submitted_at = NOW()`,
-    [taskId, userId, first.material_url, first.material_name || null, isLate ? 1 : 0]
+    [taskId, userId, first?.material_url || null, first?.material_name || null, isLate ? 1 : 0]
   );
   const submissionId = result.insertId || (await findByTaskId(taskId)).submission_id;
   await pool.execute(`DELETE FROM submission_materials WHERE submission_id = ?`, [submissionId]);

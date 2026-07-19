@@ -54,7 +54,7 @@ app.use(cors({
   credentials: true
 }));
 // Submission files are encoded as data URLs by the current browser-only upload flow.
-app.use(express.json({ limit: '15mb' }));
+app.use(express.json({ limit: '270mb' }));
 
 app.get('/', (req, res) => {
   res.json({

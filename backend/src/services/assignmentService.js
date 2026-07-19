@@ -17,6 +17,13 @@ function validateAssignment(data, partial = false) {
   if (data.priority && !allowedPriorities.includes(data.priority)) {
     throw new AppError(`Invalid priority. Use: ${allowedPriorities.join(', ')}`, 400);
   }
+
+  if (data.deadline) {
+    const deadline = new Date(`${data.deadline}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (Number.isNaN(deadline.getTime()) || deadline < today) throw new AppError('Deadline must be today or later', 400);
+  }
 }
 
 async function create(user, data) {

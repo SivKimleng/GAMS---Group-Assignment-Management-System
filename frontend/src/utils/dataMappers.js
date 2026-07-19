@@ -301,7 +301,7 @@ export function mapMember(member, tasks = []) {
   };
 }
 
-export function buildTimelineEvents(assignments, tasks, groups) {
+export function buildTimelineEvents(assignments, tasks, groups, currentUser = {}) {
   const groupEvents = groups.map((group) => ({
     id: `group-${group.groupwork_id}`,
     title: `${group.groupwork_name} created`,
@@ -310,18 +310,6 @@ export function buildTimelineEvents(assignments, tasks, groups) {
     type: 'Group',
     group: group.subject || 'Groupwork',
     description: group.description || `Group code: ${group.groupwork_code || 'Not available'}`
-  }));
-
-  const assignmentEvents = assignments.map((assignment) => ({
-    id: `assignment-${assignment.assignment_id}`,
-    title: assignment.assignment_name,
-    date: formatDateLabel(assignment.deadline),
-    dateOrder: dateOrder(assignment.deadline),
-    type: 'Deadline',
-    assignmentId: assignment.assignment_id,
-    groupworkId: assignment.groupwork_id,
-    group: assignment.groupwork_name || 'Groupwork',
-    description: assignment.assignment_description || `${assignment.priority || 'Medium'} priority assignment.`
   }));
 
   const taskEvents = tasks.map((task) => ({
@@ -335,10 +323,11 @@ export function buildTimelineEvents(assignments, tasks, groups) {
     groupworkId: task.groupwork_id,
     status: task.status,
     group: task.groupwork_name || task.assignment_name || 'Assignment',
-    description: task.task_description || `${task.status || 'Pending'} task assigned to ${task.assigned_user_name || 'the team'}.`
+    assignee: task.assigned_user_name || task.assigned_user_email || 'the team',
+    description: task.task_description || `${task.status || 'Pending'} task for ${task.assigned_user_name || task.assigned_user_email || 'the team'}.`
   }));
 
-  return [...groupEvents, ...assignmentEvents, ...taskEvents].sort(
+  return [...groupEvents, ...taskEvents].sort(
     (first, second) => first.dateOrder - second.dateOrder
   );
 }
