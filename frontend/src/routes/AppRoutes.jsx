@@ -4,7 +4,6 @@ import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/auth/LoginPage.jsx';
 import SignUpPage from '../pages/auth/SignUpPage.jsx';
 import DashboardPage from '../pages/dashboard/DashboardPage.jsx';
-import LeaderPanelPage from '../pages/dashboard/LeaderPanelPage.jsx';
 import TimelinePage from '../pages/timeline/TimelinePage.jsx';
 import WorkspacePage from '../pages/workspace/WorkspacePage.jsx';
 import GroupPage from '../pages/groups/GroupPage.jsx';
@@ -31,7 +30,6 @@ function AppRoutes() {
       <Route path="/groups/:groupId" element={<RequireAuth><GroupPage /></RequireAuth>} />
       <Route path="/tasks/:taskId/submit" element={<RequireAuth><SubmissionPage /></RequireAuth>} />
       <Route path="/help-support" element={<RequireAuth><HelpSupportPage /></RequireAuth>} />
-      <Route path="/leader" element={<RequireAuth><LeaderPanelPage /></RequireAuth>} />
       <Route path="/timeline" element={<RequireAuth><TimelinePage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

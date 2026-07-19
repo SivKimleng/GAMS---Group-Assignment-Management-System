@@ -474,9 +474,6 @@ function DashboardPage() {
                       <Button type="button" variant="secondary" className="px-4" onClick={() => handleCopyGroupCode(createdGroup.code)}>
                         Copy Group Code
                       </Button>
-                      <Button type="button" variant="secondary" className="px-4" onClick={() => handleCopyInvite(createdGroup)}>
-                        Invite Members
-                      </Button>
                     </div>
                   </div>
                 )}

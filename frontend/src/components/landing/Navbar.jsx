@@ -27,9 +27,6 @@ function Navbar({ isAuthenticated = false }) {
               <NavLink to="/workspace" className="hover:text-[#073ca6]">
                 Workspace
               </NavLink>
-              <NavLink to="/leader" className="hover:text-[#073ca6]">
-                Leader
-              </NavLink>
               <NavLink to="/timeline" className="hover:text-[#073ca6]">
                 Timeline
               </NavLink>

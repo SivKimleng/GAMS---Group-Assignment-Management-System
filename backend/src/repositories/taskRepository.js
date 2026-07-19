@@ -43,7 +43,8 @@ function buildTaskSelect(includePrivateColumn) {
 }
 
 async function findAllForUser(user) {
-  const taskSelect = buildTaskSelect(await hasIsPrivateColumn());
+  const includesPrivateColumn = await hasIsPrivateColumn();
+  const taskSelect = buildTaskSelect(includesPrivateColumn);
   const adminSql = `
     SELECT ${taskSelect}, a.title AS assignment_name, g.groupwork_name
     FROM tasks t
@@ -62,17 +63,20 @@ async function findAllForUser(user) {
     INNER JOIN user_groups ug ON ug.group_id = a.group_id
       AND ug.user_id = ?
       AND ug.membership_status = 'Active'
-    WHERE t.assigned_user_id = ?
+    WHERE (t.assigned_user_id = ?
        OR EXISTS (
          SELECT 1 FROM groupwork leader_group
          WHERE leader_group.group_id = a.group_id AND leader_group.leader_user_id = ?
-       )
+       ))
+       AND (${includesPrivateColumn ? 'COALESCE(t.is_private, 0) = 0 OR t.assigned_user_id = ?' : '1 = 1'})
     ORDER BY t.due_date ASC, t.task_id DESC
   `;
 
+  const memberParams = [user.user_id, user.user_id, user.user_id];
+  if (includesPrivateColumn) memberParams.push(user.user_id);
   const [rows] = user.role === 'Admin'
     ? await pool.execute(adminSql)
-    : await pool.execute(memberSql, [user.user_id, user.user_id, user.user_id]);
+    : await pool.execute(memberSql, memberParams);
 
   return rows;
 }

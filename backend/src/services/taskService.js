@@ -19,6 +19,13 @@ function validateTask(data, partial = false) {
   if (data.priority && !allowedPriorities.includes(data.priority)) {
     throw new AppError(`Invalid priority. Use: ${allowedPriorities.join(', ')}`, 400);
   }
+
+  if (data.due_date) {
+    const dueDate = new Date(`${data.due_date}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (Number.isNaN(dueDate.getTime()) || dueDate < today) throw new AppError('Task deadline must be today or later', 400);
+  }
 }
 
 async function ensureAssignment(assignmentId) {
@@ -140,8 +147,9 @@ async function updateStatus(user, taskId, status) {
     throw new AppError('Only the assigned user, group leader, or admin can update task status', 403);
   }
 
-  // Lifecycle changes are driven by viewing/submitting/reviewing, not an arbitrary status picker.
-  if (!canLead && !['In Progress'].includes(status)) throw new AppError('Members cannot set task status directly', 403);
+  // Team-task lifecycle is driven by opening, submitting, and reviewing; it is not a manual status picker.
+  if (canLead) throw new AppError('Leaders cannot manually change member task status', 403);
+  if (!['In Progress'].includes(status)) throw new AppError('Members cannot set task status directly', 403);
   return taskRepository.updateStatus(taskId, status);
 }
 

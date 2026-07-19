@@ -17,7 +17,6 @@ import { clearSession, getSession } from '../../utils/authSession.js';
 
 const typeStyles = {
   Group: 'bg-blue-100 text-blue-700',
-  Deadline: 'bg-red-100 text-red-700',
   Task: 'bg-teal-100 text-teal-700'
 };
 
@@ -53,7 +52,8 @@ function TimelinePage() {
         const events = buildTimelineEvents(
           uniqueAssignments(assignmentResponse.data),
           uniqueTasks(taskResponse.data),
-          uniqueGroupworks(groupworkResponse.data)
+          uniqueGroupworks(groupworkResponse.data),
+          user
         );
         setTimelineEvents(events);
         setSelectedEventId(events[0]?.id || '');
@@ -98,8 +98,8 @@ function TimelinePage() {
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#139f98]">Timeline</p>
               <h1 className="text-xl font-black text-slate-950">Assignment Timeline</h1>
             </div>
-            <Button to="/leader" variant="secondary" className="min-h-10 px-4">
-              Leader Panel
+            <Button to="/workspace" variant="secondary" className="min-h-10 px-4">
+              Workspace
             </Button>
           </div>
           <MobileDashboardNav />
@@ -167,7 +167,7 @@ function TimelinePage() {
                         <span className="absolute left-3 top-5 hidden h-3 w-3 rounded-full bg-[#073ca6] ring-4 ring-white sm:block" />
                         <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{event.date}</p>
                         <h3 className="mt-1 font-black text-slate-950">{event.title}</h3>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">{event.group}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">{event.group}{event.assignee ? ` · Task for ${event.assignee}` : ''}</p>
                         {event.status === 'Completed' && <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-700">✓ Done</span>}
                       </div>
                       <span className={`w-fit rounded-md px-2 py-1 text-xs font-black ${typeStyles[event.type] || 'bg-slate-100 text-slate-600'}`}>
@@ -192,10 +192,10 @@ function TimelinePage() {
                       {selectedEvent.type}
                     </span>
                     <h3 className="text-xl font-black text-slate-950">{selectedEvent.title}</h3>
-                    <p className="mt-2 text-sm font-bold text-slate-500">{selectedEvent.group}</p>
+                    <p className="mt-2 text-sm font-bold text-slate-500">{selectedEvent.group}{selectedEvent.assignee ? ` · Task for ${selectedEvent.assignee}` : ''}</p>
                     <p className="mt-4 text-sm leading-6 text-slate-600">{selectedEvent.description}</p>
                     {selectedEvent.taskId && <Button to={`/tasks/${selectedEvent.taskId}/submit`} className="mt-5">Open assignment</Button>}
-                    {!selectedEvent.taskId && selectedEvent.groupworkId && <Button to={`/groups/${selectedEvent.groupworkId}`} className="mt-5">Open group assignment</Button>}
+                    {!selectedEvent.taskId && selectedEvent.groupworkId && <Button to={`/groups/${selectedEvent.groupworkId}`} className="mt-5">Open group</Button>}
                   </>
                 ) : (
                   <p className="text-sm font-semibold text-slate-500">Select an event after backend data loads.</p>
