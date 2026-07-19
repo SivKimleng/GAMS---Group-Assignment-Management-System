@@ -1,6 +1,30 @@
 import pool from '../config/db.js';
 
-const taskSelect = `
+let hasIsPrivateColumnCache;
+
+async function hasIsPrivateColumn() {
+  if (hasIsPrivateColumnCache !== undefined) {
+    return hasIsPrivateColumnCache;
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT 1
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'tasks'
+       AND COLUMN_NAME = 'is_private'
+     LIMIT 1`
+  );
+  hasIsPrivateColumnCache = rows.length > 0;
+  return hasIsPrivateColumnCache;
+}
+
+async function supportsPrivateTasks() {
+  return hasIsPrivateColumn();
+}
+
+function buildTaskSelect(includePrivateColumn) {
+  return `
   t.task_id,
   t.assignment_id,
   a.group_id AS groupwork_id,
@@ -11,13 +35,15 @@ const taskSelect = `
   t.description AS task_description,
   t.priority,
   t.status,
-  t.is_private,
+  ${includePrivateColumn ? 't.is_private' : '0 AS is_private'},
   t.due_date,
   t.created_at,
   t.updated_at
 `;
+}
 
 async function findAllForUser(user) {
+  const taskSelect = buildTaskSelect(await hasIsPrivateColumn());
   const adminSql = `
     SELECT ${taskSelect}, a.title AS assignment_name, g.groupwork_name
     FROM tasks t
@@ -52,6 +78,7 @@ async function findAllForUser(user) {
 }
 
 async function findById(taskId) {
+  const taskSelect = buildTaskSelect(await hasIsPrivateColumn());
   const [rows] = await pool.execute(
     `SELECT ${taskSelect}, a.title AS assignment_name, g.groupwork_name
      FROM tasks t
@@ -65,6 +92,7 @@ async function findById(taskId) {
 }
 
 async function findByAssignmentId(assignmentId) {
+  const taskSelect = buildTaskSelect(await hasIsPrivateColumn());
   const [rows] = await pool.execute(
     `SELECT ${taskSelect}, a.title AS assignment_name, g.groupwork_name
      FROM tasks t
@@ -79,6 +107,23 @@ async function findByAssignmentId(assignmentId) {
 }
 
 async function create(data) {
+  if (!(await hasIsPrivateColumn())) {
+    const [result] = await pool.execute(
+      `INSERT INTO tasks (assignment_id, assigned_user_id, title, description, priority, status, due_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.assignment_id,
+        data.assigned_user_id || null,
+        data.task_name,
+        data.task_description || null,
+        data.priority || 'Medium',
+        data.status || 'Pending',
+        data.due_date
+      ]
+    );
+    return findById(result.insertId);
+  }
+
   const [result] = await pool.execute(
     `INSERT INTO tasks (assignment_id, assigned_user_id, title, description, priority, status, due_date, is_private)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -131,6 +176,7 @@ async function remove(taskId) {
 }
 
 export default {
+  supportsPrivateTasks,
   findAllForUser,
   findById,
   findByAssignmentId,

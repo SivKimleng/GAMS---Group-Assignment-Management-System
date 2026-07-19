@@ -36,27 +36,16 @@ function Navbar({ isAuthenticated = false }) {
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {isAuthenticated ? (
-            <>
-              <Button to="/workspace" variant="secondary" className="hidden min-h-10 px-4 sm:inline-flex">
-                Open Workspace
-              </Button>
-              <Button to="/dashboard" className="min-h-10 px-4">
-                Go to Dashboard
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button to="/login" variant="secondary" className="hidden min-h-10 px-4 sm:inline-flex">
-                Login
-              </Button>
-              <Button to="/signup" className="min-h-10 px-4">
-                Get Started
-              </Button>
-            </>
-          )}
-        </div>
+        {!isAuthenticated && (
+          <div className="flex items-center gap-2">
+            <Button to="/login" variant="secondary" className="hidden min-h-10 px-4 sm:inline-flex">
+              Login
+            </Button>
+            <Button to="/signup" className="min-h-10 px-4">
+              Get Started
+            </Button>
+          </div>
+        )}
       </nav>
     </header>
   );

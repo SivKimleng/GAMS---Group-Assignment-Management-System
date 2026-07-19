@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.get('/', userController.getAll);
+router.get('/', roleMiddleware('Admin'), userController.getAll);
 router.get('/:id', userController.getById);
 router.put('/:id', userController.update);
 router.delete('/:id', roleMiddleware('Admin'), userController.remove);

@@ -1,5 +1,24 @@
 import pool from '../config/db.js';
 
+let hasTaskIsPrivateColumnCache;
+
+async function hasTaskIsPrivateColumn() {
+  if (hasTaskIsPrivateColumnCache !== undefined) {
+    return hasTaskIsPrivateColumnCache;
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT 1
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'tasks'
+       AND COLUMN_NAME = 'is_private'
+     LIMIT 1`
+  );
+  hasTaskIsPrivateColumnCache = rows.length > 0;
+  return hasTaskIsPrivateColumnCache;
+}
+
 const assignmentSelect = `
   a.assignment_id,
   a.group_id AS groupwork_id,
@@ -14,6 +33,10 @@ const assignmentSelect = `
 `;
 
 async function findAllForUser(user) {
+  const privateTaskFilter = await hasTaskIsPrivateColumn()
+    ? 'AND COALESCE(assigned_task.is_private, 0) = 0'
+    : '';
+
   const adminSql = `
     SELECT ${assignmentSelect}, g.groupwork_name
     FROM assignments a
@@ -32,14 +55,19 @@ async function findAllForUser(user) {
       SELECT 1 FROM tasks assigned_task
       WHERE assigned_task.assignment_id = a.assignment_id
         AND assigned_task.assigned_user_id = ?
-        AND COALESCE(assigned_task.is_private, 0) = 0
+        ${privateTaskFilter}
+    )
+    OR EXISTS (
+      SELECT 1 FROM groupwork leader_group
+      WHERE leader_group.group_id = a.group_id
+        AND leader_group.leader_user_id = ?
     )
     ORDER BY a.due_date ASC, a.assignment_id DESC
   `;
 
   const [rows] = user.role === 'Admin'
     ? await pool.execute(adminSql)
-    : await pool.execute(memberSql, [user.user_id, user.user_id]);
+    : await pool.execute(memberSql, [user.user_id, user.user_id, user.user_id]);
 
   return rows;
 }

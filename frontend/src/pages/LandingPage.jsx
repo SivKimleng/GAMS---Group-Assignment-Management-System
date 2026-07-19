@@ -28,25 +28,16 @@ function LandingPage() {
             <p className="mt-5 max-w-xl text-base leading-7 text-slate-600">
               GAMS helps university students organize groups, assign tasks, monitor progress, and stay ahead of deadlines in one focused workspace.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              {isAuthenticated ? (
-                <>
-                  <Button to="/dashboard">Go to Dashboard</Button>
-                  <Button to="/workspace" variant="secondary">
-                    Open Workspace
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button to="/signup">Get Started</Button>
-                  <Button to="/login" variant="secondary">
-                    Login
-                  </Button>
-                </>
-              )}
-            </div>
+            {!isAuthenticated && (
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button to="/signup">Get Started</Button>
+                <Button to="/login" variant="secondary">
+                  Login
+                </Button>
+              </div>
+            )}
             {isAuthenticated && (
-              <p className="mt-4 text-sm font-semibold text-slate-500">
+              <p className="mt-6 text-sm font-semibold text-slate-500">
                 Welcome back, {firstName}. Your session is still active.
               </p>
             )}
@@ -108,27 +99,16 @@ function LandingPage() {
                 ? 'Open your dashboard or workspace to keep assignments, tasks, and deadlines moving.'
                 : 'Join the academic workspace designed for productive collaboration and organized project delivery.'}
             </p>
-            <div className="mt-7 flex justify-center gap-3">
-              {isAuthenticated ? (
-                <>
-                  <Button to="/dashboard" variant="light">
-                    Go to Dashboard
-                  </Button>
-                  <Button to="/workspace" variant="dark">
-                    Open Workspace
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button to="/signup" variant="light">
-                    Create Account
-                  </Button>
-                  <Button to="/login" variant="dark">
-                    Login
-                  </Button>
-                </>
-              )}
-            </div>
+            {!isAuthenticated && (
+              <div className="mt-7 flex justify-center gap-3">
+                <Button to="/signup" variant="light">
+                  Create Account
+                </Button>
+                <Button to="/login" variant="dark">
+                  Login
+                </Button>
+              </div>
+            )}
           </div>
         </section>
       </main>

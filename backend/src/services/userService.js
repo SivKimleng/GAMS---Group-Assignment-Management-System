@@ -8,7 +8,11 @@ async function getAll() {
   return userRepository.findAll();
 }
 
-async function getById(userId) {
+async function getById(requestUser, userId) {
+  if (requestUser && requestUser.role !== 'Admin' && requestUser.user_id !== Number(userId)) {
+    throw new AppError('You can only view your own profile', 403);
+  }
+
   const user = await userRepository.findById(userId);
 
   if (!user) {
@@ -23,7 +27,7 @@ async function update(requestUser, userId, data) {
     throw new AppError('You can only update your own profile', 403);
   }
 
-  await getById(userId);
+  await getById(requestUser, userId);
 
   const changes = {
     first_name: data.first_name,

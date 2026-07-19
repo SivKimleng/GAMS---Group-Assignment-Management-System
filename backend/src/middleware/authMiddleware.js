@@ -10,6 +10,10 @@ export default async function authMiddleware(req, res, next) {
       throw new AppError('Missing or invalid Authorization header', 401);
     }
 
+    if (!process.env.JWT_SECRET) {
+      throw new AppError('JWT_SECRET is not configured', 500);
+    }
+
     const token = header.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await userRepository.findById(decoded.user_id);

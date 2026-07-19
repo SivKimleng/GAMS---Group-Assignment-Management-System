@@ -54,6 +54,10 @@ async function create(user, data) {
 
 async function createPersonal(user, data) {
   validateTask(data);
+  if (!(await taskRepository.supportsPrivateTasks())) {
+    throw new AppError('Private tasks are not available until the database schema is updated', 503);
+  }
+
   const assignment = await ensureAssignment(data.assignment_id);
   await ensureGroupMember(user, assignment.groupwork_id);
 
@@ -121,12 +125,12 @@ async function updateStatus(user, taskId, status) {
     throw new AppError('Task not found', 404);
   }
 
-  if (task.is_private && Number(task.assigned_user_id) !== Number(user.user_id) && user.role !== 'Admin') {
-    throw new AppError('Only the owner can update a private task', 403);
-  }
-
   if (task.is_private) {
-    throw new AppError('Private tasks can only have their status updated by the owner', 403);
+    if (Number(task.assigned_user_id) !== Number(user.user_id) && user.role !== 'Admin') {
+      throw new AppError('Only the owner can update a private task', 403);
+    }
+
+    return taskRepository.updateStatus(taskId, status);
   }
 
   const canLead = !task.is_private && (user.role === 'Admin' || await groupworkRepository.isLeader(user.user_id, task.groupwork_id));

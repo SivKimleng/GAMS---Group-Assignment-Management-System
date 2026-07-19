@@ -12,7 +12,7 @@ async function getAll(req, res, next) {
 
 async function getById(req, res, next) {
   try {
-    const user = await userService.getById(req.params.id);
+    const user = await userService.getById(req.user, req.params.id);
     sendSuccess(res, 200, 'User fetched successfully', user);
   } catch (error) {
     next(error);

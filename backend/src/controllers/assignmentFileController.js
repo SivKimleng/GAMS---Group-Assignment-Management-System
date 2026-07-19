@@ -19,7 +19,9 @@ async function create(req, res, next) {
     if (!assignment) throw new AppError('Assignment not found', 404);
     await ensureGroupLeader(req.user, assignment.groupwork_id);
     if (!req.body.file_name?.trim() || !req.body.file_url?.trim()) throw new AppError('file_name and file_url are required', 400);
-    sendSuccess(res, 201, 'Assignment material added successfully', await assignmentFileRepository.create(assignment.assignment_id, req.body.file_name.trim(), req.body.file_url.trim()));
+    const material = await assignmentFileRepository.create(assignment.assignment_id, req.body.file_name.trim(), req.body.file_url.trim());
+    if (!material) throw new AppError('Assignment materials are not available until the database schema is updated', 503);
+    sendSuccess(res, 201, 'Assignment material added successfully', material);
   } catch (error) { next(error); }
 }
 

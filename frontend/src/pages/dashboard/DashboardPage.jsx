@@ -40,6 +40,20 @@ const statusClasses = {
   Review: 'bg-purple-100 text-purple-700'
 };
 
+function getNextStatusAction(task) {
+  if (task.isPrivate) {
+    return {
+      type: 'status',
+      status: task.status === 'Completed' ? 'In Progress' : 'Completed'
+    };
+  }
+
+  if (task.status === 'Pending') return { type: 'status', status: 'In Progress' };
+  if (task.status === 'Review') return { type: 'status', status: 'Completed' };
+  if (task.status === 'Completed') return { type: 'status', status: 'In Progress' };
+  return { type: 'submit' };
+}
+
 function DashboardPage() {
   const navigate = useNavigate();
   const session = getSession();
@@ -275,11 +289,16 @@ function DashboardPage() {
   }
 
   async function handleToggleTaskStatus(taskToUpdate) {
-    const nextStatus = taskToUpdate.status === 'Completed' ? 'In Progress' : 'Completed';
+    const action = getNextStatusAction(taskToUpdate);
+
+    if (action.type === 'submit') {
+      navigate(`/tasks/${taskToUpdate.id}/submit`);
+      return;
+    }
 
     if (taskToUpdate.id) {
       try {
-        const response = await updateTaskStatus(taskToUpdate.id, nextStatus);
+        const response = await updateTaskStatus(taskToUpdate.id, action.status);
         const updatedTask = mapTask(response.data);
         setTasks((currentTasks) =>
           currentTasks.map((task) => (task.id === taskToUpdate.id ? updatedTask : task))

@@ -30,7 +30,7 @@ const swaggerDefinition = {
           last_name: { type: 'string', example: 'Student' },
           email: { type: 'string', example: 'demo.student@gams.edu' },
           password: { type: 'string', example: 'Password123!' },
-          role: { type: 'string', enum: ['Student', 'Instructor', 'Admin'], example: 'Student' }
+          role: { type: 'string', enum: ['Student'], example: 'Student', description: 'Public registration always creates Student accounts.' }
         }
       },
       LoginRequest: {
@@ -74,6 +74,32 @@ const swaggerDefinition = {
           priority: { type: 'string', enum: ['Low', 'Medium', 'High'], example: 'Medium' },
           status: { type: 'string', enum: ['Pending', 'In Progress', 'Review', 'Completed'], example: 'Pending' },
           due_date: { type: 'string', format: 'date', example: '2026-07-18' }
+        }
+      },
+      AssignmentMaterialRequest: {
+        type: 'object',
+        required: ['file_name', 'file_url'],
+        properties: {
+          file_name: { type: 'string', example: 'Brief.pdf' },
+          file_url: { type: 'string', example: 'https://example.edu/brief.pdf' }
+        }
+      },
+      SubmissionRequest: {
+        type: 'object',
+        properties: {
+          materials: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['material_url'],
+              properties: {
+                material_name: { type: 'string', example: 'Final report.pdf' },
+                material_url: { type: 'string', example: 'https://example.edu/final-report.pdf' }
+              }
+            }
+          },
+          submission_url: { type: 'string', example: 'https://example.edu/final-report.pdf' },
+          file_name: { type: 'string', example: 'Final report link' }
         }
       },
       StatusRequest: {
@@ -129,18 +155,18 @@ const swaggerDefinition = {
     '/api/users': {
       get: {
         tags: ['Users'],
-        summary: 'List users',
+        summary: 'List users as Admin',
         security: [{ bearerAuth: [] }],
-        responses: { 200: { description: 'Users fetched' } }
+        responses: { 200: { description: 'Users fetched' }, 403: { description: 'Forbidden' } }
       }
     },
     '/api/users/{id}': {
       get: {
         tags: ['Users'],
-        summary: 'Get user by id',
+        summary: 'Get own user profile, or any profile as Admin',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
-        responses: { 200: { description: 'User fetched' }, 404: { description: 'User not found' } }
+        responses: { 200: { description: 'User fetched' }, 403: { description: 'Forbidden' }, 404: { description: 'User not found' } }
       },
       put: {
         tags: ['Users'],
@@ -207,6 +233,15 @@ const swaggerDefinition = {
         responses: { 200: { description: 'Joined groupwork' } }
       }
     },
+    '/api/groupworks/{id}/leave': {
+      post: {
+        tags: ['Groupworks'],
+        summary: 'Leave groupwork; leaders delete the group when leaving',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Left groupwork or deleted groupwork' }, 403: { description: 'Forbidden' } }
+      }
+    },
     '/api/groupworks/{id}/members': {
       get: {
         tags: ['Groupworks'],
@@ -214,6 +249,18 @@ const swaggerDefinition = {
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
         responses: { 200: { description: 'Members fetched' } }
+      }
+    },
+    '/api/groupworks/{id}/members/{userId}': {
+      delete: {
+        tags: ['Groupworks'],
+        summary: 'Remove a member as group leader or Admin',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+          { name: 'userId', in: 'path', required: true, schema: { type: 'integer' } }
+        ],
+        responses: { 200: { description: 'Member removed' }, 403: { description: 'Forbidden' } }
       }
     },
     '/api/groupworks/{groupworkId}/assignments': {
@@ -282,6 +329,23 @@ const swaggerDefinition = {
         responses: { 200: { description: 'Progress calculated' } }
       }
     },
+    '/api/assignments/{assignmentId}/materials': {
+      get: {
+        tags: ['Assignments'],
+        summary: 'List assignment materials',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'assignmentId', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Assignment materials fetched' } }
+      },
+      post: {
+        tags: ['Assignments'],
+        summary: 'Add assignment material as group leader or Admin',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'assignmentId', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/AssignmentMaterialRequest' } } } },
+        responses: { 201: { description: 'Assignment material added' }, 403: { description: 'Forbidden' } }
+      }
+    },
     '/api/tasks': {
       post: {
         tags: ['Tasks'],
@@ -295,6 +359,15 @@ const swaggerDefinition = {
         summary: 'List visible tasks',
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: 'Tasks fetched' } }
+      }
+    },
+    '/api/tasks/personal': {
+      post: {
+        tags: ['Tasks'],
+        summary: 'Create a private task for the authenticated user',
+        security: [{ bearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/TaskRequest' } } } },
+        responses: { 201: { description: 'Private task created' }, 403: { description: 'Forbidden' } }
       }
     },
     '/api/tasks/{id}': {
@@ -329,6 +402,32 @@ const swaggerDefinition = {
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
         requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/StatusRequest' } } } },
         responses: { 200: { description: 'Task status updated' } }
+      }
+    },
+    '/api/tasks/{taskId}/submission': {
+      get: {
+        tags: ['Submissions'],
+        summary: 'Get a task submission as assigned user, group leader, or Admin',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'taskId', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Submission fetched' }, 403: { description: 'Forbidden' } }
+      },
+      post: {
+        tags: ['Submissions'],
+        summary: 'Submit task materials as the assigned user',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'taskId', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/SubmissionRequest' } } } },
+        responses: { 200: { description: 'Submission saved' }, 403: { description: 'Forbidden' } }
+      }
+    },
+    '/api/tasks/{taskId}/unsubmit': {
+      post: {
+        tags: ['Submissions'],
+        summary: 'Un-submit task materials as the assigned user',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'taskId', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Submission marked as not submitted' }, 403: { description: 'Forbidden' } }
       }
     },
     '/api/reminders': {
